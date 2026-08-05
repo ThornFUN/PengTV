@@ -63,7 +63,7 @@ public final class FeatureActivity extends BasePageActivity {
         showPage("关于 PENG 桌面", null);
         addInfo("应用背景\nPENG 桌面是一款为 Android TV 设备打造的轻量级自定义桌面。");
         addInfo("应用目的\n提供简洁、可自定义且适合遥控器操作的应用入口。");
-        addInfo("Android 兼容性\n支持 Android 4.0（API 14）及以上；当前目标版本为 Android 9（API 28）。");
+        addInfo("Android 兼容性\n支持 Android 4.0（API 14）及以上；当前目标版本为 Android 15（API 35）。");
         addInfo("作者\nPENG");
     }
 

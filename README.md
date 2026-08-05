@@ -2,7 +2,7 @@
 
 PENG 桌面是一个面向 Android TV、电视盒子和大屏设备的轻量级开源启动器。它以遥控器方向键为核心交互方式，提供可自定义的首页应用卡片、独立的全部应用页、系统 Wi-Fi 入口、本地壁纸和应用管理功能。
 
-> 最低支持 Android 4.0（API 14）；当前 `targetSdk` 为 Android 9（API 28）。
+> 最低支持 Android 4.0（API 14）；当前 `targetSdk` 为 Android 15（API 35）。
 
 ## 功能
 
