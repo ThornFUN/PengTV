@@ -7,7 +7,7 @@ android {
     compileSdk 35
 
     defaultConfig {
-        applicationId "com.penglauncher.recovered"
+        applicationId "com.peng.launcher"
         minSdk 14
         targetSdk 28
         versionCode 1
