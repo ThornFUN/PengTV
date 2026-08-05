@@ -2,6 +2,10 @@ plugins {
     id "com.android.application"
 }
 
+def pengStorePassword = providers.gradleProperty("PENG_STORE_PASSWORD").orNull
+def pengKeyPassword = providers.gradleProperty("PENG_KEY_PASSWORD")
+        .getOrElse(pengStorePassword == null ? "" : pengStorePassword)
+
 android {
     namespace "com.penglauncher.recovered"
     compileSdk 35
@@ -12,6 +16,21 @@ android {
         targetSdk 35
         versionCode 1
         versionName "0.1.0"
+    }
+
+    signingConfigs {
+        release {
+            storeFile rootProject.file("def_sign.jks")
+            storePassword pengStorePassword
+            keyAlias "penglauncher"
+            keyPassword pengKeyPassword
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+        }
     }
 }
 

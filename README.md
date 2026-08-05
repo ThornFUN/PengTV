@@ -38,6 +38,22 @@ cd peng-launcher
 app/build/outputs/apk/debug/app-debug.apk
 ```
 
+### 构建签名 Release APK
+
+项目使用根目录的 `def_sign.jks` 作为调试用途的 Release 签名证书。密码不写入仓库；构建时通过 Gradle 属性传入：
+
+```bash
+./gradlew assembleRelease \
+  -PPENG_STORE_PASSWORD="<keystore-password>" \
+  -PPENG_KEY_PASSWORD="<key-password>"
+```
+
+签名后的 Release APK 输出到：
+
+```text
+app/build/outputs/apk/release/PENG-Launcher-v<version>-release.apk
+```
+
 如已连接设备或模拟器，可直接安装：
 
 ```bash
