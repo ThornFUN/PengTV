@@ -14,3 +14,14 @@ android {
         versionName "0.1.0"
     }
 }
+
+def appVersionName = android.defaultConfig.versionName
+
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        variant.outputs.forEach { output ->
+            output.outputFileName.set(
+                    "PENG-Launcher-v${appVersionName}-${variant.name}.apk")
+        }
+    }
+}
