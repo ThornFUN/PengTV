@@ -4,4 +4,5 @@ app/build/
 local.properties
 *.iml
 .idea/
+*.jks
 recovered/apk-decompile/
