@@ -47,6 +47,7 @@ public final class MainActivity extends BasePageActivity {
     private ViewFlipper pageSwitcher;
     private View firstHomeCard;
     private View firstAllAppsCard;
+    private int lastHomeFocusIndex;
     private ImageView homeBackground;
     private int currentPage;
     private List<AppChoice> availableApps;
@@ -87,6 +88,25 @@ public final class MainActivity extends BasePageActivity {
     protected void onPause() {
         clockHandler.removeCallbacks(updateClock);
         super.onPause();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus && pageSwitcher != null) {
+            pageSwitcher.post(new Runnable() {
+                @Override
+                public void run() {
+                    if (currentPage == 0) {
+                        focusHomeCard(lastHomeFocusIndex);
+                    } else if (currentPage == 1) {
+                        if (firstAllAppsCard != null) {
+                            firstAllAppsCard.requestFocus();
+                        }
+                    }
+                }
+            });
+        }
     }
 
     private void buildHome() {
@@ -240,6 +260,7 @@ public final class MainActivity extends BasePageActivity {
             if (index == 0) {
                 firstHomeCard = card;
             }
+            card.setTag(index);
             row.addView(card, gridParams());
         }
         refreshAllApps();
@@ -406,6 +427,31 @@ public final class MainActivity extends BasePageActivity {
         });
     }
 
+    private View getHomeCard(int index) {
+        if (cardGrid == null) {
+            return null;
+        }
+        int row = index / COLUMN_COUNT;
+        int col = index % COLUMN_COUNT;
+        if (row >= cardGrid.getChildCount()) {
+            return null;
+        }
+        View rowView = cardGrid.getChildAt(row);
+        if (rowView instanceof ViewGroup && col < ((ViewGroup) rowView).getChildCount()) {
+            return ((ViewGroup) rowView).getChildAt(col);
+        }
+        return null;
+    }
+
+    private void focusHomeCard(int index) {
+        View card = getHomeCard(index);
+        if (card != null) {
+            card.requestFocus();
+        } else if (firstHomeCard != null) {
+            firstHomeCard.requestFocus();
+        }
+    }
+
     private void showHomePage() {
         if (currentPage == 0) {
             return;
@@ -417,9 +463,7 @@ public final class MainActivity extends BasePageActivity {
         pageSwitcher.post(new Runnable() {
             @Override
             public void run() {
-                if (firstHomeCard != null) {
-                    firstHomeCard.requestFocus();
-                }
+                focusHomeCard(lastHomeFocusIndex);
             }
         });
     }
@@ -448,6 +492,12 @@ public final class MainActivity extends BasePageActivity {
                 view.animate().cancel();
                 view.animate().scaleX(focused ? 1.10f : 1.0f)
                         .scaleY(focused ? 1.10f : 1.0f).setDuration(160).start();
+                if (focused) {
+                    Object tag = view.getTag();
+                    if (tag instanceof Integer) {
+                        lastHomeFocusIndex = (Integer) tag;
+                    }
+                }
             }
         });
         return card;
