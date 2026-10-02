@@ -67,6 +67,9 @@ public final class MainActivity extends BasePageActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (getActionBar() != null) {
+            getActionBar().hide();
+        }
         availableApps = loadAvailableApps();
         createDefaultCardsIfNeeded();
         buildHome();
@@ -150,7 +153,6 @@ public final class MainActivity extends BasePageActivity {
         LinearLayout homePage = new LinearLayout(this);
         homePage.setOrientation(LinearLayout.VERTICAL);
         homePage.setPadding(dp(34), dp(20), dp(34), dp(30));
-        homePage.addView(createStatusBar());
         homePage.addView(createWelcomePanel());
         cardGrid = new LinearLayout(this);
         cardGrid.setOrientation(LinearLayout.VERTICAL);
@@ -181,39 +183,6 @@ public final class MainActivity extends BasePageActivity {
         allAppsScroll.addView(allAppsContent, new ScrollView.LayoutParams(
                 ScrollView.LayoutParams.MATCH_PARENT, ScrollView.LayoutParams.WRAP_CONTENT));
         return allAppsScroll;
-    }
-
-    private View createStatusBar() {
-        LinearLayout bar = new LinearLayout(this);
-        bar.setGravity(Gravity.CENTER_VERTICAL);
-
-        TextView brand = new TextView(this);
-        brand.setText("PENG  桌面");
-        brand.setTextColor(Color.WHITE);
-        brand.setTextSize(16);
-        bar.addView(brand);
-
-        View spacer = new View(this);
-        bar.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1.0f));
-
-        TextView settings = new TextView(this);
-        settings.setText("  设置  ");
-        settings.setTextColor(Color.WHITE);
-        settings.setTextSize(16);
-        settings.setPadding(dp(18), dp(9), dp(18), dp(9));
-        settings.setBackground(interactiveBackground());
-        applyTvFocusFeedback(settings);
-        settings.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                FeatureActivity.open(MainActivity.this, FeatureActivity.SETTINGS);
-            }
-        });
-        LinearLayout.LayoutParams settingsParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        settingsParams.leftMargin = dp(18);
-        bar.addView(settings, settingsParams);
-        return bar;
     }
 
     private View createWelcomePanel() {
