@@ -22,7 +22,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.TranslateAnimation;
-import android.widget.GridLayout;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -43,8 +42,8 @@ public final class MainActivity extends BasePageActivity {
     private static final int COLUMN_COUNT = 5;
     private static final int INITIAL_CARD_COUNT = 8;
     private static final int DESKTOP_CARD_COUNT = 10;
-    private GridLayout cardGrid;
-    private GridLayout allAppsGrid;
+    private LinearLayout cardGrid;
+    private LinearLayout allAppsGrid;
     private ViewFlipper pageSwitcher;
     private View firstHomeCard;
     private View firstAllAppsCard;
@@ -133,9 +132,8 @@ public final class MainActivity extends BasePageActivity {
         homePage.setPadding(dp(34), dp(20), dp(34), dp(30));
         homePage.addView(createStatusBar());
         homePage.addView(createWelcomePanel());
-        cardGrid = new GridLayout(this);
-        cardGrid.setColumnCount(COLUMN_COUNT);
-        cardGrid.setUseDefaultMargins(false);
+        cardGrid = new LinearLayout(this);
+        cardGrid.setOrientation(LinearLayout.VERTICAL);
         FrameLayout cardArea = new FrameLayout(this);
         LinearLayout.LayoutParams cardAreaParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1.0f);
@@ -156,9 +154,8 @@ public final class MainActivity extends BasePageActivity {
         allAppsScroll.setBackgroundColor(Color.rgb(15, 29, 49));
         LinearLayout allAppsContent = new LinearLayout(this);
         allAppsContent.setOrientation(LinearLayout.VERTICAL);
-        allAppsGrid = new GridLayout(this);
-        allAppsGrid.setColumnCount(6);
-        allAppsGrid.setUseDefaultMargins(false);
+        allAppsGrid = new LinearLayout(this);
+        allAppsGrid.setOrientation(LinearLayout.VERTICAL);
         allAppsContent.addView(allAppsGrid, new LinearLayout.LayoutParams(
                 ScrollView.LayoutParams.MATCH_PARENT, ScrollView.LayoutParams.WRAP_CONTENT));
         allAppsScroll.addView(allAppsContent, new ScrollView.LayoutParams(
@@ -224,7 +221,15 @@ public final class MainActivity extends BasePageActivity {
 
     private void refreshCards() {
         cardGrid.removeAllViews();
+        LinearLayout row = null;
         for (int index = 0; index < DESKTOP_CARD_COUNT; index++) {
+            if (index % COLUMN_COUNT == 0) {
+                row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                cardGrid.addView(row, new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT));
+            }
             AppChoice app = choiceAt(index);
             View card;
             if (app != null) {
@@ -235,19 +240,27 @@ public final class MainActivity extends BasePageActivity {
             if (index == 0) {
                 firstHomeCard = card;
             }
-            cardGrid.addView(card, gridParams());
+            row.addView(card, gridParams());
         }
         refreshAllApps();
     }
 
     private void refreshAllApps() {
         allAppsGrid.removeAllViews();
+        LinearLayout row = null;
         for (int index = 0; index < availableApps.size(); index++) {
+            if (index % 6 == 0) {
+                row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                allAppsGrid.addView(row, new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT));
+            }
             View card = createAllAppsCard(availableApps.get(index), index);
             if (index == 0) {
                 firstAllAppsCard = card;
             }
-            allAppsGrid.addView(card, allAppsGridParams());
+            row.addView(card, allAppsGridParams());
         }
     }
 
@@ -440,22 +453,16 @@ public final class MainActivity extends BasePageActivity {
         return card;
     }
 
-    private GridLayout.LayoutParams gridParams() {
-        GridLayout.LayoutParams params = new GridLayout.LayoutParams(
-                GridLayout.spec(GridLayout.UNDEFINED),
-                GridLayout.spec(GridLayout.UNDEFINED, 1.0f));
-        params.width = 0;
-        params.height = cardHeight();
+    private LinearLayout.LayoutParams gridParams() {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                0, cardHeight(), 1.0f);
         params.setMargins(dp(8), dp(8), dp(8), dp(8));
         return params;
     }
 
-    private GridLayout.LayoutParams allAppsGridParams() {
-        GridLayout.LayoutParams params = new GridLayout.LayoutParams(
-                GridLayout.spec(GridLayout.UNDEFINED),
-                GridLayout.spec(GridLayout.UNDEFINED, 1.0f));
-        params.width = 0;
-        params.height = Math.max(dp(68), Math.round(cardHeight() * 0.58f));
+    private LinearLayout.LayoutParams allAppsGridParams() {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                0, Math.max(dp(68), Math.round(cardHeight() * 0.58f)), 1.0f);
         params.setMargins(dp(7), dp(7), dp(7), dp(7));
         return params;
     }
