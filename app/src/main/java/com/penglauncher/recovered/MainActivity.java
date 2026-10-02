@@ -220,7 +220,6 @@ public final class MainActivity extends BasePageActivity {
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(dp(26), dp(14), dp(26), dp(16));
-        panel.setBackground(roundRect(Color.argb(130, 36, 54, 85), dp(22)));
         LinearLayout.LayoutParams panelParams = new LinearLayout.LayoutParams(
                 dp(380), LinearLayout.LayoutParams.WRAP_CONTENT);
         panelParams.topMargin = dp(26);
