@@ -63,28 +63,47 @@ public final class MainActivity extends BasePageActivity {
             clockHandler.postDelayed(this, 30000L);
         }
     };
+    private static final int MAX_RELOAD_ATTEMPTS = 3;
+    private final Handler reloadHandler = new Handler();
+    private int reloadAttempts;
+    private final Runnable reloadCardsRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (reloadAttempts >= MAX_RELOAD_ATTEMPTS) {
+                return;
+            }
+            reloadAttempts++;
+            availableApps = loadAvailableApps();
+            refreshCards();
+            scheduleReloadIfMissing();
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        android.util.Log.e("PENG", "== onCreate called, task=" + getTaskId());
         if (getActionBar() != null) {
             getActionBar().hide();
         }
         availableApps = loadAvailableApps();
         createDefaultCardsIfNeeded();
         buildHome();
+        scheduleReloadIfMissing();
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        android.util.Log.e("PENG", "== onNewIntent called, action=" + intent.getAction());
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        android.util.Log.e("PENG", "== onResume called");
         clockHandler.removeCallbacks(updateClock);
         clockHandler.post(updateClock);
-        if (cardGrid != null) {
-            availableApps = loadAvailableApps();
-            applyHomeWallpaper();
-            refreshCards();
-        }
     }
 
     @Override
@@ -622,6 +641,26 @@ public final class MainActivity extends BasePageActivity {
             }
         });
         return apps;
+    }
+
+    private boolean containsPackage(String packageName) {
+        for (AppChoice app : availableApps) {
+            if (app.resolveInfo.activityInfo.packageName.equals(packageName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void scheduleReloadIfMissing() {
+        for (int index = 0; index < DESKTOP_CARD_COUNT; index++) {
+            String pkg = preferences().getString("card_package_" + index, null);
+            if (pkg != null && !containsPackage(pkg)) {
+                reloadHandler.removeCallbacks(reloadCardsRunnable);
+                reloadHandler.postDelayed(reloadCardsRunnable, 1000L);
+                return;
+            }
+        }
     }
 
     private SharedPreferences preferences() {
