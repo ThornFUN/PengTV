@@ -293,7 +293,7 @@ public final class MainActivity extends BasePageActivity {
         allAppsGrid.removeAllViews();
         LinearLayout row = null;
         for (int index = 0; index < availableApps.size(); index++) {
-            if (index % 6 == 0) {
+            if (index % COLUMN_COUNT == 0) {
                 row = new LinearLayout(this);
                 row.setOrientation(LinearLayout.HORIZONTAL);
                 allowFocusOverflow(row);
@@ -384,7 +384,7 @@ public final class MainActivity extends BasePageActivity {
                     showAllAppsMenu(app);
                     return true;
                 }
-                if (index < 6 && keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                if (index < COLUMN_COUNT && keyCode == KeyEvent.KEYCODE_DPAD_UP) {
                     showHomePage();
                     return true;
                 }
