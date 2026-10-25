@@ -8,6 +8,7 @@ final class VideoPreferences {
     static final String PREFERENCES = "iptv_sources";
     static final String M3U_URL = "m3u_url";
     static final String EPG_URL = "epg_url";
+    private static final String LAST_CHANNEL_URL = "last_channel_url";
 
     private VideoPreferences() {
     }
@@ -29,6 +30,14 @@ final class VideoPreferences {
                 .putString(M3U_URL, m3uUrl.trim())
                 .putString(EPG_URL, epgUrl.trim())
                 .apply();
+    }
+
+    static String lastChannelUrl(Context context) {
+        return preferences(context).getString(LAST_CHANNEL_URL, "");
+    }
+
+    static void saveLastChannelUrl(Context context, String url) {
+        preferences(context).edit().putString(LAST_CHANNEL_URL, url).apply();
     }
 
     static boolean isHttpUrl(String value) {

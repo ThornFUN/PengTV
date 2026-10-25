@@ -25,6 +25,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -39,6 +40,7 @@ public final class VideoMainActivity extends Activity {
     private LinearLayout channelList;
     private TextView status;
     private View firstChannel;
+    private boolean initialLoad = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,7 +51,8 @@ public final class VideoMainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        reloadChannels();
+        reloadChannels(initialLoad);
+        initialLoad = false;
     }
 
     private void buildScreen() {
@@ -90,7 +93,7 @@ public final class VideoMainActivity extends Activity {
         setContentView(root);
     }
 
-    private void reloadChannels() {
+    private void reloadChannels(final boolean autoPlayLastChannel) {
         status.setText("正在加载频道和节目单...");
         channelList.removeAllViews();
         new Thread(new Runnable() {
@@ -118,7 +121,7 @@ public final class VideoMainActivity extends Activity {
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            showChannels(channels, guide, false, defaultChannelCount);
+                            showChannels(channels, guide, false, defaultChannelCount, autoPlayLastChannel);
                         }
                     });
                 } catch (final IOException exception) {
@@ -126,7 +129,7 @@ public final class VideoMainActivity extends Activity {
                         @Override
                         public void run() {
                             showChannels(channels, new GuideResult(new HashMap<String, String>(), false),
-                                    true, defaultChannelCount);
+                                    true, defaultChannelCount, autoPlayLastChannel);
                         }
                     });
                 }
@@ -135,7 +138,7 @@ public final class VideoMainActivity extends Activity {
     }
 
     private void showChannels(List<Channel> channels, GuideResult guide, boolean userSourceFailed,
-            int defaultChannelCount) {
+            int defaultChannelCount, boolean autoPlayLastChannel) {
         channelList.removeAllViews();
         if (channels.isEmpty()) {
             showEmpty("直播源中没有可播放频道。");
@@ -146,22 +149,29 @@ public final class VideoMainActivity extends Activity {
                 + (userSourceFailed ? "；追加播放列表加载失败，仍可播放默认频道。"
                 : guide.failed ? "；节目单加载失败，仍可播放频道。"
                 : guide.programmes.isEmpty() ? "" : "，已显示节目单预览"));
+        PlaybackQueue.setChannels(channels);
+        if (autoPlayLastChannel) {
+            int lastChannelIndex = findChannelIndex(VideoPreferences.lastChannelUrl(this), channels);
+            if (lastChannelIndex >= 0) {
+                startPlayback(lastChannelIndex);
+                return;
+            }
+        }
         for (int index = 0; index < channels.size(); index++) {
             final Channel channel = channels.get(index);
-            TextView row = action(channel.name);
+            final int channelIndex = index;
+            String channelLabel = String.format(Locale.US, "%03d  %s", index + 1, channel.name);
+            TextView row = action(channelLabel);
             String programme = guide.programmes.get(channel.id);
             if (programme != null && programme.length() > 0) {
-                row.setText(channel.name + "\n" + programme);
+                row.setText(channelLabel + "\n" + programme);
                 row.setTextSize(16);
                 row.setGravity(Gravity.CENTER_VERTICAL);
             }
             row.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    Intent intent = new Intent(VideoMainActivity.this, PlayerActivity.class);
-                    intent.putExtra(PlayerActivity.EXTRA_NAME, channel.name);
-                    intent.putExtra(PlayerActivity.EXTRA_URL, channel.url);
-                    startActivity(intent);
+                    startPlayback(channelIndex);
                 }
             });
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
@@ -176,6 +186,31 @@ public final class VideoMainActivity extends Activity {
         if (firstChannel != null) {
             firstChannel.requestFocus();
         }
+    }
+
+    private int findChannelIndex(String url, List<Channel> channels) {
+        if (url.length() == 0) {
+            return -1;
+        }
+        for (int index = 0; index < channels.size(); index++) {
+            if (url.equals(channels.get(index).url)) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    private void startPlayback(int index) {
+        Channel channel = PlaybackQueue.channelAt(index);
+        if (channel == null) {
+            return;
+        }
+        VideoPreferences.saveLastChannelUrl(this, channel.url);
+        Intent intent = new Intent(this, PlayerActivity.class);
+        intent.putExtra(PlayerActivity.EXTRA_INDEX, index);
+        intent.putExtra(PlayerActivity.EXTRA_NAME, channel.name);
+        intent.putExtra(PlayerActivity.EXTRA_URL, channel.url);
+        startActivity(intent);
     }
 
     private void showEmpty(String message) {
@@ -325,9 +360,9 @@ public final class VideoMainActivity extends Activity {
     }
 
     static final class Channel {
-        private final String name;
-        private final String id;
-        private final String url;
+        final String name;
+        final String id;
+        final String url;
 
         Channel(String name, String id, String url) {
             this.name = name;

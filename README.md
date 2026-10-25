@@ -71,7 +71,8 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 - 可选导入 XMLTV 地址，在频道列表中显示节目单预览。
 - 可在电视端填写地址，或在“手机导入”页使用同一局域网手机访问电视
   `8081` 端口填写地址；该服务只在导入页面可见时运行。
-- 采用 Android 系统播放器，适合设备自身支持的 HTTP/HLS 流。
+- 采用兼容 Android 4.4 的 ExoPlayer HLS 播放器，适合设备自身支持的 HTTP/HLS 流。
+- 频道按三位编号显示；应用启动时自动恢复上次选择的频道，播放页可按上、下键切换上一或下一频道。
 
 单独构建 PENG影视：
 
