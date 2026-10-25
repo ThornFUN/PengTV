@@ -4,8 +4,11 @@ import android.app.Activity;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -22,6 +25,14 @@ public final class PlayerActivity extends Activity {
     public static final String EXTRA_URL = "url";
     public static final String EXTRA_INDEX = "index";
     private ExoPlayer player;
+    private final Handler overlayHandler = new Handler(Looper.getMainLooper());
+    private final Runnable hideOverlay = new Runnable() {
+        @Override
+        public void run() {
+            title.setVisibility(View.INVISIBLE);
+            channelNumber.setVisibility(View.INVISIBLE);
+        }
+    };
     private TextView title;
     private TextView channelNumber;
     private String fallbackName;
@@ -105,6 +116,7 @@ public final class PlayerActivity extends Activity {
 
     @Override
     protected void onStop() {
+        overlayHandler.removeCallbacks(hideOverlay);
         if (player != null) {
             player.pause();
         }
@@ -130,10 +142,18 @@ public final class PlayerActivity extends Activity {
         currentIndex = channel == null ? 0 : index;
         title.setText(name == null ? "PENG影视" : name);
         channelNumber.setText(String.format(Locale.US, "%03d", currentIndex + 1));
+        showChannelOverlay();
         VideoPreferences.saveLastChannelUrl(this, url);
         player.setMediaItem(MediaItem.fromUri(Uri.parse(url)));
         player.prepare();
         player.play();
+    }
+
+    private void showChannelOverlay() {
+        title.setVisibility(View.VISIBLE);
+        channelNumber.setVisibility(View.VISIBLE);
+        overlayHandler.removeCallbacks(hideOverlay);
+        overlayHandler.postDelayed(hideOverlay, 5000);
     }
 
     private int dp(int value) {
