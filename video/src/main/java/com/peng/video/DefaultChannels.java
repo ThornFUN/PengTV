@@ -6,7 +6,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 final class DefaultChannels {
     private static final String ASSET_NAME = "default_channels.tsv";
@@ -20,7 +22,7 @@ final class DefaultChannels {
             return new ArrayList<>(cachedChannels);
         }
 
-        List<VideoMainActivity.Channel> channels = new ArrayList<>();
+        Map<String, VideoMainActivity.Channel> channelsByName = new LinkedHashMap<>();
         BufferedReader reader = new BufferedReader(new InputStreamReader(
                 context.getAssets().open(ASSET_NAME), "UTF-8"));
         try {
@@ -37,14 +39,19 @@ final class DefaultChannels {
                 if (category.length() == 0 || name.length() == 0 || !VideoPreferences.isHttpUrl(url)) {
                     continue;
                 }
-                channels.add(new VideoMainActivity.Channel(
-                        category + " · " + name,
-                        "default-" + index++,
-                        url));
+                String displayName = category + " · " + name;
+                VideoMainActivity.Channel channel = channelsByName.get(displayName);
+                if (channel == null) {
+                    channel = new VideoMainActivity.Channel(displayName, "default-" + index++, url);
+                    channelsByName.put(displayName, channel);
+                } else {
+                    channel.addFallbackUrl(url);
+                }
             }
         } finally {
             reader.close();
         }
+        List<VideoMainActivity.Channel> channels = new ArrayList<>(channelsByName.values());
         if (channels.isEmpty()) {
             throw new IOException("default channel list is empty");
         }

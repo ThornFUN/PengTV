@@ -616,11 +616,23 @@ public final class VideoMainActivity extends Activity {
         final String name;
         final String id;
         final String url;
+        private final List<String> urls = new ArrayList<>();
 
         Channel(String name, String id, String url) {
             this.name = name;
             this.id = id;
             this.url = url;
+            urls.add(url);
+        }
+
+        void addFallbackUrl(String fallbackUrl) {
+            if (!urls.contains(fallbackUrl)) {
+                urls.add(fallbackUrl);
+            }
+        }
+
+        List<String> urls() {
+            return new ArrayList<>(urls);
         }
     }
 

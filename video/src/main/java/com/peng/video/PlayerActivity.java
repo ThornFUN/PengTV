@@ -21,6 +21,8 @@ import com.google.android.exoplayer2.PlaybackException;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.source.BehindLiveWindowException;
 import com.google.android.exoplayer2.ui.PlayerView;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 
 public final class PlayerActivity extends Activity {
@@ -61,6 +63,8 @@ public final class PlayerActivity extends Activity {
     };
     private String currentUrl;
     private int retryCount;
+    private List<String> currentUrls = Collections.emptyList();
+    private int currentUrlIndex;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -131,6 +135,9 @@ public final class PlayerActivity extends Activity {
                     retryHandler.removeCallbacks(retryPlayback);
                     retryHandler.postDelayed(retryPlayback,
                             error.getCause() instanceof BehindLiveWindowException ? 0 : 2000);
+                    return;
+                }
+                if (playFallbackUrl()) {
                     return;
                 }
                 loadingOverlay.setText("播放失败，请切换频道或稍后重试");
@@ -220,12 +227,27 @@ public final class PlayerActivity extends Activity {
         retryHandler.removeCallbacks(retryPlayback);
         retryCount = 0;
         currentIndex = channel == null ? 0 : index;
-        currentUrl = url;
+        currentUrls = channel == null ? Collections.singletonList(url) : channel.urls();
+        currentUrlIndex = 0;
+        currentUrl = currentUrls.get(currentUrlIndex);
         title.setText(name == null ? "PENG影视" : name);
         channelNumber.setText(String.format(Locale.US, "%03d", currentIndex + 1));
         showChannelOverlay();
         VideoPreferences.saveLastChannelUrl(this, url);
         prepareCurrentChannel();
+    }
+
+    private boolean playFallbackUrl() {
+        if (currentUrlIndex + 1 >= currentUrls.size()) {
+            return false;
+        }
+        currentUrl = currentUrls.get(++currentUrlIndex);
+        retryCount = 0;
+        loadingOverlay.setText("主线路失败，正在切换备用线路...");
+        loadingOverlay.setVisibility(View.VISIBLE);
+        retryHandler.removeCallbacks(retryPlayback);
+        retryHandler.post(retryPlayback);
+        return true;
     }
 
     private void prepareCurrentChannel() {
