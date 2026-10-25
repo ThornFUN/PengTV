@@ -68,6 +68,7 @@ public final class MainActivity extends BasePageActivity {
     private ViewFlipper pageSwitcher;
     private View firstHomeCard;
     private View firstAllAppsCard;
+    private TextView settingsButton;
     private int lastHomeFocusIndex;
     private ImageView homeBackground;
     private int currentPage;
@@ -170,6 +171,22 @@ public final class MainActivity extends BasePageActivity {
         }
     }
 
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_UP
+                && event.getKeyCode() == KeyEvent.KEYCODE_DPAD_UP
+                && currentPage == 0) {
+            pageSwitcher.post(new Runnable() {
+                @Override
+                public void run() {
+                    FeatureActivity.open(MainActivity.this, FeatureActivity.SETTINGS);
+                }
+            });
+            return true;
+        }
+        return super.dispatchKeyEvent(event);
+    }
+
     private void buildHome() {
         FrameLayout screen = new FrameLayout(this);
         homeBackground = new ImageView(this);
@@ -232,7 +249,7 @@ public final class MainActivity extends BasePageActivity {
         homePage.setOrientation(LinearLayout.VERTICAL);
         homePage.setPadding(dp(34), dp(20), dp(34), dp(30));
         allowFocusOverflow(homePage);
-        homePage.addView(createWelcomePanel());
+        homePage.addView(createHomeHeader());
         cardGrid = new LinearLayout(this);
         cardGrid.setOrientation(LinearLayout.VERTICAL);
         allowFocusOverflow(cardGrid);
@@ -288,6 +305,30 @@ public final class MainActivity extends BasePageActivity {
         panel.addView(dateView);
 
         return panel;
+    }
+
+    private View createHomeHeader() {
+        LinearLayout header = new LinearLayout(this);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams welcomeParams = new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
+        welcomeParams.topMargin = dp(26);
+        header.addView(createWelcomePanel(), welcomeParams);
+
+        settingsButton = text("设置", 17, Color.WHITE);
+        settingsButton.setGravity(Gravity.CENTER);
+        settingsButton.setPadding(dp(20), 0, dp(20), 0);
+        settingsButton.setClickable(true);
+        setBackgroundCompat(settingsButton, interactiveBackground());
+        applyTvFocusFeedback(settingsButton);
+        settingsButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                FeatureActivity.open(MainActivity.this, FeatureActivity.SETTINGS);
+            }
+        });
+        header.addView(settingsButton, new LinearLayout.LayoutParams(dp(112), dp(52)));
+        return header;
     }
 
     private void refreshCards() {
@@ -528,19 +569,19 @@ public final class MainActivity extends BasePageActivity {
                 selectAppForCard(index);
             }
         });
-        if (index >= COLUMN_COUNT) {
-            card.setOnKeyListener(new View.OnKeyListener() {
-                @Override
-                public boolean onKey(View view, int keyCode, KeyEvent event) {
-                    if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN
-                            && event.getAction() == KeyEvent.ACTION_DOWN) {
-                        showAllAppsPage();
-                        return true;
-                    }
+        card.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View view, int keyCode, KeyEvent event) {
+                if (event.getAction() != KeyEvent.ACTION_DOWN) {
                     return false;
                 }
-            });
-        }
+                if (index >= COLUMN_COUNT && keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    showAllAppsPage();
+                    return true;
+                }
+                return false;
+            }
+        });
         return card;
     }
 
