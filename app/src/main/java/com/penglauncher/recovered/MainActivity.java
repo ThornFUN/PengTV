@@ -173,15 +173,15 @@ public final class MainActivity extends BasePageActivity {
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-        if (event.getAction() == KeyEvent.ACTION_UP
+        if ((event.getAction() == KeyEvent.ACTION_DOWN || event.getAction() == KeyEvent.ACTION_UP)
                 && event.getKeyCode() == KeyEvent.KEYCODE_DPAD_UP
                 && currentPage == 0) {
-            pageSwitcher.post(new Runnable() {
+            settingsButton.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    FeatureActivity.open(MainActivity.this, FeatureActivity.SETTINGS);
+                    settingsButton.requestFocus();
                 }
-            });
+            }, 100L);
             return true;
         }
         return super.dispatchKeyEvent(event);

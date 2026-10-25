@@ -33,6 +33,8 @@ abstract class BasePageActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(28), dp(20), dp(28), dp(28));
         root.setBackgroundColor(Color.rgb(20, 30, 49));
+        root.setClipChildren(false);
+        root.setClipToPadding(false);
 
         LinearLayout header = new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
@@ -51,9 +53,13 @@ abstract class BasePageActivity extends Activity {
         }
 
         ScrollView scroll = new ScrollView(this);
+        scroll.setClipChildren(false);
+        scroll.setClipToPadding(false);
         content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(0, dp(18), 0, 0);
+        content.setClipChildren(false);
+        content.setClipToPadding(false);
         scroll.addView(content);
         root.addView(scroll, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1.0f));
@@ -150,8 +156,8 @@ abstract class BasePageActivity extends Activity {
             public void onFocusChange(View focusedView, boolean focused) {
                 focusedView.animate().cancel();
                 focusedView.animate()
-                        .scaleX(focused ? 1.04f : 1.0f)
-                        .scaleY(focused ? 1.04f : 1.0f)
+                        .scaleX(focused ? 1.02f : 1.0f)
+                        .scaleY(focused ? 1.02f : 1.0f)
                         .setDuration(140)
                         .start();
             }
