@@ -35,6 +35,7 @@ public final class PlayerActivity extends Activity {
     };
     private TextView title;
     private TextView channelNumber;
+    private TextView loadingOverlay;
     private String fallbackName;
     private String fallbackUrl;
     private int currentIndex;
@@ -53,7 +54,16 @@ public final class PlayerActivity extends Activity {
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
         PlayerView playerView = new PlayerView(this);
+        playerView.setKeepContentOnPlayerReset(false);
         root.addView(playerView, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        loadingOverlay = new TextView(this);
+        loadingOverlay.setText("正在加载...");
+        loadingOverlay.setTextColor(Color.WHITE);
+        loadingOverlay.setTextSize(20);
+        loadingOverlay.setGravity(Gravity.CENTER);
+        loadingOverlay.setBackgroundColor(Color.BLACK);
+        root.addView(loadingOverlay, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
         title = new TextView(this);
         title.setTextColor(Color.WHITE);
@@ -79,6 +89,13 @@ public final class PlayerActivity extends Activity {
         player = new ExoPlayer.Builder(this).build();
         playerView.setPlayer(player);
         player.addListener(new Player.Listener() {
+            @Override
+            public void onPlaybackStateChanged(int playbackState) {
+                if (playbackState == Player.STATE_READY) {
+                    loadingOverlay.setVisibility(View.GONE);
+                }
+            }
+
             @Override
             public void onPlayerError(PlaybackException error) {
                 if (error.getCause() instanceof BehindLiveWindowException) {
@@ -144,6 +161,7 @@ public final class PlayerActivity extends Activity {
         channelNumber.setText(String.format(Locale.US, "%03d", currentIndex + 1));
         showChannelOverlay();
         VideoPreferences.saveLastChannelUrl(this, url);
+        loadingOverlay.setVisibility(View.VISIBLE);
         player.setMediaItem(MediaItem.fromUri(Uri.parse(url)));
         player.prepare();
         player.play();
