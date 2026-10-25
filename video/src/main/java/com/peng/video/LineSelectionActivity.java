@@ -6,19 +6,29 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+import com.google.android.exoplayer2.ExoPlayer;
+import com.google.android.exoplayer2.MediaItem;
+import com.google.android.exoplayer2.PlaybackException;
+import com.google.android.exoplayer2.Player;
+import com.google.android.exoplayer2.ui.PlayerView;
 import java.util.ArrayList;
 import java.util.List;
 
 public final class LineSelectionActivity extends Activity {
     private static final String EXTRA_CHANNEL_NAME = "channel_name";
     private static final String EXTRA_URLS = "urls";
+    private ExoPlayer previewPlayer;
+    private TextView previewStatus;
+    private String previewUrl;
 
     static void open(Context context, String channelName, List<String> urls) {
         Intent intent = new Intent(context, LineSelectionActivity.class);
@@ -51,6 +61,38 @@ public final class LineSelectionActivity extends Activity {
         descriptionParams.topMargin = dp(10);
         root.addView(description, descriptionParams);
 
+        FrameLayout preview = new FrameLayout(this);
+        preview.setBackgroundColor(Color.BLACK);
+        PlayerView playerView = new PlayerView(this);
+        playerView.setKeepContentOnPlayerReset(false);
+        preview.addView(playerView, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        previewStatus = text("正在预览线路...", 18, Color.WHITE);
+        previewStatus.setGravity(Gravity.CENTER);
+        previewStatus.setBackgroundColor(Color.argb(150, 0, 0, 0));
+        preview.addView(previewStatus, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(250));
+        previewParams.topMargin = dp(18);
+        root.addView(preview, previewParams);
+
+        previewPlayer = new ExoPlayer.Builder(this).build();
+        playerView.setPlayer(previewPlayer);
+        previewPlayer.addListener(new Player.Listener() {
+            @Override
+            public void onPlaybackStateChanged(int playbackState) {
+                if (playbackState == Player.STATE_READY) {
+                    previewStatus.setText("当前线路预览正常");
+                }
+            }
+
+            @Override
+            public void onPlayerError(PlaybackException error) {
+                previewStatus.setText("该线路无法播放，请尝试其他线路");
+            }
+        });
+
         ScrollView scroll = new ScrollView(this);
         LinearLayout lines = new LinearLayout(this);
         lines.setOrientation(LinearLayout.VERTICAL);
@@ -60,6 +102,9 @@ public final class LineSelectionActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1.0f));
 
         String preferredUrl = VideoPreferences.defaultLineUrl(this, channelName);
+        if (urls.remove(preferredUrl)) {
+            urls.add(0, preferredUrl);
+        }
         for (int index = 0; index < urls.size(); index++) {
             final String url = urls.get(index);
             TextView line = text("线路 " + (index + 1)
@@ -68,6 +113,14 @@ public final class LineSelectionActivity extends Activity {
             line.setBackground(focusBackground());
             line.setClickable(true);
             line.setFocusable(true);
+            line.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+                @Override
+                public void onFocusChange(View view, boolean focused) {
+                    if (focused) {
+                        previewUrl(url);
+                    }
+                }
+            });
             line.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
@@ -85,6 +138,33 @@ public final class LineSelectionActivity extends Activity {
             }
         }
         setContentView(root);
+    }
+
+    @Override
+    protected void onStop() {
+        if (previewPlayer != null) {
+            previewPlayer.pause();
+        }
+        super.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (previewPlayer != null) {
+            previewPlayer.release();
+        }
+        super.onDestroy();
+    }
+
+    private void previewUrl(String url) {
+        if (url.equals(previewUrl)) {
+            return;
+        }
+        previewUrl = url;
+        previewStatus.setText("正在预览线路...");
+        previewPlayer.setMediaItem(MediaItem.fromUri(Uri.parse(url)));
+        previewPlayer.prepare();
+        previewPlayer.play();
     }
 
     private TextView text(String value, int size, int color) {
