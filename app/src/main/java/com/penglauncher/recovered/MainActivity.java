@@ -53,8 +53,8 @@ import java.util.Set;
 
 public final class MainActivity extends BasePageActivity {
     private static final int COLUMN_COUNT = 5;
-    private static final int INITIAL_CARD_COUNT = 8;
-    private static final int DESKTOP_CARD_COUNT = 10;
+    private static final int INITIAL_CARD_COUNT = 5;
+    private static final int DESKTOP_CARD_COUNT = 5;
     private static final int MAX_RELOAD_ATTEMPTS = 10;
     private static final long RELOAD_DELAY_MILLIS = 1000L;
     private static final int ICON_CANVAS_SIZE_DP = 96;
@@ -316,8 +316,7 @@ public final class MainActivity extends BasePageActivity {
         header.addView(createWelcomePanel(), welcomeParams);
 
         settingsButton = new ImageView(this);
-        settingsButton.setImageResource(android.R.drawable.ic_menu_manage);
-        settingsButton.setColorFilter(Color.WHITE, android.graphics.PorterDuff.Mode.SRC_IN);
+        settingsButton.setImageResource(R.drawable.ic_settings_gear);
         settingsButton.setContentDescription("设置");
         settingsButton.setScaleType(ImageView.ScaleType.CENTER);
         settingsButton.setPadding(dp(14), dp(14), dp(14), dp(14));
@@ -422,7 +421,7 @@ public final class MainActivity extends BasePageActivity {
                     showCardMenu(index, app.label);
                     return true;
                 }
-                if (index >= COLUMN_COUNT && keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
                     showAllAppsPage();
                     return true;
                 }
@@ -578,7 +577,7 @@ public final class MainActivity extends BasePageActivity {
                 if (event.getAction() != KeyEvent.ACTION_DOWN) {
                     return false;
                 }
-                if (index >= COLUMN_COUNT && keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
                     showAllAppsPage();
                     return true;
                 }
