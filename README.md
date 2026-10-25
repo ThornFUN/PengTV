@@ -67,7 +67,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 `video/` 是与 PENG 桌面同仓库、但可独立安装的 IPTV 应用，包名为
 `com.peng.video`。它不声明 HOME，不会改变默认桌面。
 
-- 仅播放用户导入且有权使用的 M3U 频道源，不内置频道或影视内容。
+- 内置 NASA TV Public、NASA TV Media 两个公开 HLS 频道；可追加用户有权使用的 M3U 频道源。
 - 可选导入 XMLTV 地址，在频道列表中显示节目单预览。
 - 可在电视端填写地址，或在“手机导入”页使用同一局域网手机访问电视
   `8081` 端口填写地址；该服务只在导入页面可见时运行。

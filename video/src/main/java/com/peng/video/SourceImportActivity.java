@@ -54,9 +54,9 @@ public final class SourceImportActivity extends Activity {
         showingPhoneImport = false;
         LinearLayout root = pageRoot();
         root.addView(title("直播源设置"));
-        root.addView(description("PENG影视不提供频道内容。请仅导入您有权使用的 M3U 和 XMLTV 地址。"));
+        root.addView(description("默认提供公开频道。可在此追加您有权使用的 M3U 和 XMLTV 地址。"));
 
-        root.addView(label("M3U 播放列表地址（必填）"));
+        root.addView(label("追加 M3U 播放列表地址（可选）"));
         m3uInput = input("https://example.com/playlist.m3u");
         m3uInput.setText(VideoPreferences.m3uUrl(this));
         root.addView(m3uInput, fieldParams());
@@ -97,9 +97,14 @@ public final class SourceImportActivity extends Activity {
     private void saveFromTv() {
         String m3u = m3uInput.getText().toString().trim();
         String epg = epgInput.getText().toString().trim();
-        if (!VideoPreferences.isHttpUrl(m3u)) {
+        if (m3u.length() > 0 && !VideoPreferences.isHttpUrl(m3u)) {
             m3uInput.setError("请输入 http:// 或 https:// M3U 地址");
             m3uInput.requestFocus();
+            return;
+        }
+        if (epg.length() > 0 && m3u.length() == 0) {
+            epgInput.setError("请先填写需要追加的 M3U 地址");
+            epgInput.requestFocus();
             return;
         }
         if (epg.length() > 0 && !VideoPreferences.isHttpUrl(epg)) {
@@ -214,8 +219,10 @@ public final class SourceImportActivity extends Activity {
                     Map<String, String> values = formValues(body);
                     String m3u = value(values, "m3u");
                     String epg = value(values, "epg");
-                    if (!VideoPreferences.isHttpUrl(m3u)) {
+                    if (m3u.length() > 0 && !VideoPreferences.isHttpUrl(m3u)) {
                         message = "请输入有效的 http:// 或 https:// M3U 地址。";
+                    } else if (epg.length() > 0 && m3u.length() == 0) {
+                        message = "请先填写需要追加的 M3U 地址。";
                     } else if (epg.length() > 0 && !VideoPreferences.isHttpUrl(epg)) {
                         message = "XMLTV 地址必须是 http:// 或 https://。";
                     } else {
@@ -254,9 +261,9 @@ public final class SourceImportActivity extends Activity {
                 + "h1{margin-top:0}label{display:block;margin:20px 0 8px}input{box-sizing:border-box;width:100%;padding:14px;border:0;border-radius:10px;font-size:16px}"
                 + "button{margin-top:24px;width:100%;padding:15px;border:0;border-radius:10px;background:#4a9ae8;color:white;font-size:17px;font-weight:bold}"
                 + ".success{color:#b8f5c8}.error{color:#ffb9b9}.tip{color:#c2d5eb;font-size:14px;line-height:1.6}</style>"
-                + "<main class=\"box\"><h1>PENG影视</h1><p class=\"tip\">导入您有权使用的直播源。电视离开此页后，导入网页会自动关闭。</p>"
-                + notice + "<form method=\"post\"><label>M3U 播放列表地址（必填）</label>"
-                + "<input name=\"m3u\" type=\"url\" required value=\"" + currentM3u + "\" placeholder=\"https://example.com/playlist.m3u\">"
+                + "<main class=\"box\"><h1>PENG影视</h1><p class=\"tip\">电视已提供公开默认频道。可在此追加您有权使用的直播源；离开此页后，导入网页会自动关闭。</p>"
+                + notice + "<form method=\"post\"><label>追加 M3U 播放列表地址（可选）</label>"
+                + "<input name=\"m3u\" type=\"url\" value=\"" + currentM3u + "\" placeholder=\"https://example.com/playlist.m3u\">"
                 + "<label>XMLTV 节目单地址（可选）</label><input name=\"epg\" type=\"url\" value=\"" + currentEpg
                 + "\" placeholder=\"https://example.com/guide.xml\"><button type=\"submit\">保存到电视</button></form></main></html>";
     }

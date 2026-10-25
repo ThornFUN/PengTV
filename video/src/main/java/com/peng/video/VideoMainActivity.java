@@ -91,30 +91,29 @@ public final class VideoMainActivity extends Activity {
     }
 
     private void reloadChannels() {
-        String source = VideoPreferences.m3uUrl(this);
-        if (!VideoPreferences.isHttpUrl(source)) {
-            showEmpty("尚未配置直播源。请进入“源设置”填写合法的 M3U 地址。");
-            return;
-        }
         status.setText("正在加载频道和节目单...");
         channelList.removeAllViews();
         new Thread(new Runnable() {
             @Override
             public void run() {
+                final List<Channel> channels = DefaultChannels.create();
                 try {
-                    final List<Channel> channels = loadChannels(VideoPreferences.m3uUrl(VideoMainActivity.this));
+                    String source = VideoPreferences.m3uUrl(VideoMainActivity.this);
+                    if (VideoPreferences.isHttpUrl(source)) {
+                        channels.addAll(loadChannels(source));
+                    }
                     final GuideResult guide = loadGuide(VideoPreferences.epgUrl(VideoMainActivity.this));
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            showChannels(channels, guide);
+                            showChannels(channels, guide, false);
                         }
                     });
                 } catch (final IOException exception) {
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            showEmpty("加载直播源失败，请检查地址和网络连接。");
+                            showChannels(channels, new GuideResult(new HashMap<String, String>(), false), true);
                         }
                     });
                 }
@@ -122,14 +121,15 @@ public final class VideoMainActivity extends Activity {
         }, "iptv-loader").start();
     }
 
-    private void showChannels(List<Channel> channels, GuideResult guide) {
+    private void showChannels(List<Channel> channels, GuideResult guide, boolean userSourceFailed) {
         channelList.removeAllViews();
         if (channels.isEmpty()) {
             showEmpty("直播源中没有可播放频道。");
             return;
         }
-        status.setText("已加载 " + channels.size() + " 个频道"
-                + (guide.failed ? "；节目单加载失败，仍可播放频道。"
+        status.setText("已加载 " + channels.size() + " 个频道（含 2 个默认公开频道）"
+                + (userSourceFailed ? "；追加播放列表加载失败，仍可播放默认频道。"
+                : guide.failed ? "；节目单加载失败，仍可播放频道。"
                 : guide.programmes.isEmpty() ? "" : "，已显示节目单预览"));
         for (int index = 0; index < channels.size(); index++) {
             final Channel channel = channels.get(index);
@@ -309,12 +309,12 @@ public final class VideoMainActivity extends Activity {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
-    private static final class Channel {
+    static final class Channel {
         private final String name;
         private final String id;
         private final String url;
 
-        private Channel(String name, String id, String url) {
+        Channel(String name, String id, String url) {
             this.name = name;
             this.id = id;
             this.url = url;
