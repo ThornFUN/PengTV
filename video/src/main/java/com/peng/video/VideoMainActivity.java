@@ -96,7 +96,19 @@ public final class VideoMainActivity extends Activity {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                final List<Channel> channels = DefaultChannels.create();
+                final List<Channel> channels;
+                try {
+                    channels = DefaultChannels.create(VideoMainActivity.this);
+                } catch (final IOException exception) {
+                    mainHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            showEmpty("内置频道配置读取失败。");
+                        }
+                    });
+                    return;
+                }
+                final int defaultChannelCount = channels.size();
                 try {
                     String source = VideoPreferences.m3uUrl(VideoMainActivity.this);
                     if (VideoPreferences.isHttpUrl(source)) {
@@ -106,14 +118,15 @@ public final class VideoMainActivity extends Activity {
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            showChannels(channels, guide, false);
+                            showChannels(channels, guide, false, defaultChannelCount);
                         }
                     });
                 } catch (final IOException exception) {
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            showChannels(channels, new GuideResult(new HashMap<String, String>(), false), true);
+                            showChannels(channels, new GuideResult(new HashMap<String, String>(), false),
+                                    true, defaultChannelCount);
                         }
                     });
                 }
@@ -121,14 +134,15 @@ public final class VideoMainActivity extends Activity {
         }, "iptv-loader").start();
     }
 
-    private void showChannels(List<Channel> channels, GuideResult guide, boolean userSourceFailed) {
+    private void showChannels(List<Channel> channels, GuideResult guide, boolean userSourceFailed,
+            int defaultChannelCount) {
         channelList.removeAllViews();
         if (channels.isEmpty()) {
             showEmpty("直播源中没有可播放频道。");
             return;
         }
         status.setText("已加载 " + channels.size() + " 个频道（含 "
-                + DefaultChannels.create().size() + " 个默认公开频道）"
+                + defaultChannelCount + " 个默认频道）"
                 + (userSourceFailed ? "；追加播放列表加载失败，仍可播放默认频道。"
                 : guide.failed ? "；节目单加载失败，仍可播放频道。"
                 : guide.programmes.isEmpty() ? "" : "，已显示节目单预览"));
