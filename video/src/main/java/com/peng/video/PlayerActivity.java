@@ -7,6 +7,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -23,6 +24,7 @@ import com.google.android.exoplayer2.ui.PlayerView;
 import java.util.Locale;
 
 public final class PlayerActivity extends Activity {
+    private static final String TAG = "PENG_VIDEO";
     public static final String EXTRA_NAME = "name";
     public static final String EXTRA_URL = "url";
     public static final String EXTRA_INDEX = "index";
@@ -115,11 +117,13 @@ public final class PlayerActivity extends Activity {
                 if (playbackState == Player.STATE_READY) {
                     retryCount = 0;
                     loadingOverlay.setVisibility(View.GONE);
+                    Log.i(TAG, "Playback ready: " + currentUrl);
                 }
             }
 
             @Override
             public void onPlayerError(PlaybackException error) {
+                Log.e(TAG, "Playback error: " + currentUrl, error);
                 if (retryCount < 3) {
                     retryCount++;
                     loadingOverlay.setText("播放中断，正在重试（" + retryCount + "/3）...");
