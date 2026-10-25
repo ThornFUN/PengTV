@@ -1,6 +1,7 @@
 package com.peng.video;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Rect;
@@ -88,6 +89,8 @@ public final class PlayerActivity extends Activity {
     private List<Integer> visibleDrawerIndexes = Collections.emptyList();
     private String selectedDrawerCategory;
     private int drawerPage;
+    private View hiddenChannelsButton;
+    private int focusedDrawerChannelIndex = -1;
     private boolean linePreviewing;
     private int linePreviewStartIndex;
 
@@ -195,6 +198,10 @@ public final class PlayerActivity extends Activity {
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_MENU) {
+            if (channelDrawer.getVisibility() == View.VISIBLE && focusedDrawerChannelIndex >= 0) {
+                confirmHideChannel(focusedDrawerChannelIndex);
+                return true;
+            }
             toggleChannelDrawer();
             return true;
         }
@@ -401,6 +408,18 @@ public final class PlayerActivity extends Activity {
             indexes.add(index);
         }
         drawerCategories.removeAllViews();
+        hiddenChannelsButton = drawerAction("已隐藏频道（"
+                + VideoPreferences.hiddenChannels(this).size() + "）");
+        hiddenChannelsButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivity(new Intent(PlayerActivity.this, HiddenChannelsActivity.class));
+            }
+        });
+        LinearLayout.LayoutParams hiddenParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(64));
+        hiddenParams.bottomMargin = dp(18);
+        drawerCategories.addView(hiddenChannelsButton, hiddenParams);
         for (int index = 0; index < drawerCategoryNames.size(); index++) {
             final int categoryIndex = index;
             final String category = drawerCategoryNames.get(index);
@@ -410,6 +429,7 @@ public final class PlayerActivity extends Activity {
                 @Override
                 public void onFocusChange(View view, boolean focused) {
                     if (focused) {
+                        focusedDrawerChannelIndex = -1;
                         showDrawerCategory(category);
                     }
                 }
@@ -439,7 +459,9 @@ public final class PlayerActivity extends Activity {
                     } else {
                         int target = categoryIndex
                                 + (keyCode == KeyEvent.KEYCODE_DPAD_UP ? -1 : 1);
-                        if (target >= 0 && target < drawerCategoryNames.size()) {
+                        if (target < 0) {
+                            hiddenChannelsButton.requestFocus();
+                        } else if (target < drawerCategoryNames.size()) {
                             drawerCategoryViews.get(drawerCategoryNames.get(target)).requestFocus();
                         }
                     }
@@ -485,6 +507,14 @@ public final class PlayerActivity extends Activity {
             VideoMainActivity.Channel channel = PlaybackQueue.channelAt(channelIndex);
             TextView item = drawerAction(String.format(Locale.US, "%03d  %s", channelIndex + 1,
                     channelDisplayName(channel)));
+            item.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+                @Override
+                public void onFocusChange(View view, boolean focused) {
+                    if (focused) {
+                        focusedDrawerChannelIndex = channelIndex;
+                    }
+                }
+            });
             item.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
@@ -600,6 +630,27 @@ public final class PlayerActivity extends Activity {
         int drawerWidth = getResources().getDisplayMetrics().widthPixels * 3 / 4;
         int spacing = dp(12) * (DRAWER_COLUMN_COUNT - 1);
         return (drawerWidth - dp(250) - dp(58) - spacing) / DRAWER_COLUMN_COUNT;
+    }
+
+    private void confirmHideChannel(final int index) {
+        final VideoMainActivity.Channel channel = PlaybackQueue.channelAt(index);
+        if (channel == null) {
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("隐藏频道")
+                .setMessage("隐藏“" + channelDisplayName(channel)
+                        + "”后，它将不再出现在频道列表和换台队列中。")
+                .setNegativeButton("取消", null)
+                .setPositiveButton("隐藏", (dialog, which) -> {
+                    VideoPreferences.hideChannel(PlayerActivity.this, channel.name);
+                    Toast.makeText(PlayerActivity.this, "频道已隐藏", Toast.LENGTH_SHORT).show();
+                    Intent intent = new Intent(PlayerActivity.this, VideoMainActivity.class);
+                    intent.putExtra(VideoMainActivity.EXTRA_CHANNEL_LIST_ONLY, true);
+                    startActivity(intent);
+                    finish();
+                })
+                .show();
     }
 
     private StateListDrawable focusBackground() {

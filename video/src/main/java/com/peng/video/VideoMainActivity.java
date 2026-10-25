@@ -32,6 +32,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.xmlpull.v1.XmlPullParser;
@@ -162,12 +163,14 @@ public final class VideoMainActivity extends Activity {
                     });
                     return;
                 }
+                removeHiddenChannels(channels);
                 final int defaultChannelCount = channels.size();
                 try {
                     String source = VideoPreferences.m3uUrl(VideoMainActivity.this);
                     if (VideoPreferences.isHttpUrl(source)) {
                         channels.addAll(loadChannels(source));
                     }
+                    removeHiddenChannels(channels);
                     final GuideResult guide = loadGuide(VideoPreferences.epgUrl(VideoMainActivity.this));
                     mainHandler.post(new Runnable() {
                         @Override
@@ -500,6 +503,15 @@ public final class VideoMainActivity extends Activity {
         channelList.addView(configure, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, dp(64)));
         configure.requestFocus();
+    }
+
+    private void removeHiddenChannels(List<Channel> channels) {
+        Set<String> hiddenChannels = VideoPreferences.hiddenChannelNameSet(this);
+        for (int index = channels.size() - 1; index >= 0; index--) {
+            if (hiddenChannels.contains(channels.get(index).name)) {
+                channels.remove(index);
+            }
+        }
     }
 
     private List<Channel> loadChannels(String source) throws IOException {

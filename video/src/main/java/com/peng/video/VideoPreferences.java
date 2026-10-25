@@ -3,6 +3,10 @@ package com.peng.video;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 final class VideoPreferences {
     static final String PREFERENCES = "iptv_sources";
@@ -10,6 +14,7 @@ final class VideoPreferences {
     static final String EPG_URL = "epg_url";
     private static final String LAST_CHANNEL_URL = "last_channel_url";
     private static final String DEFAULT_LINE_PREFIX = "default_line_";
+    private static final String HIDDEN_CHANNELS = "hidden_channels";
 
     private VideoPreferences() {
     }
@@ -47,6 +52,28 @@ final class VideoPreferences {
 
     static void saveDefaultLineUrl(Context context, String channelName, String url) {
         preferences(context).edit().putString(DEFAULT_LINE_PREFIX + channelName, url).apply();
+    }
+
+    static void hideChannel(Context context, String channelName) {
+        Set<String> hidden = new HashSet<>(hiddenChannels(context));
+        hidden.add(channelName);
+        preferences(context).edit().putStringSet(HIDDEN_CHANNELS, hidden).apply();
+    }
+
+    static void restoreChannel(Context context, String channelName) {
+        Set<String> hidden = new HashSet<>(hiddenChannels(context));
+        hidden.remove(channelName);
+        preferences(context).edit().putStringSet(HIDDEN_CHANNELS, hidden).apply();
+    }
+
+    static List<String> hiddenChannels(Context context) {
+        Set<String> hidden = preferences(context).getStringSet(HIDDEN_CHANNELS,
+                new HashSet<String>());
+        return new ArrayList<>(hidden);
+    }
+
+    static Set<String> hiddenChannelNameSet(Context context) {
+        return new HashSet<>(hiddenChannels(context));
     }
 
     static boolean isHttpUrl(String value) {
