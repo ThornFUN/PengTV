@@ -26,6 +26,7 @@ public final class PlayerActivity extends Activity {
     public static final String EXTRA_INDEX = "index";
     private ExoPlayer player;
     private final Handler overlayHandler = new Handler(Looper.getMainLooper());
+    private final Handler channelInputHandler = new Handler(Looper.getMainLooper());
     private final Runnable hideOverlay = new Runnable() {
         @Override
         public void run() {
@@ -39,6 +40,13 @@ public final class PlayerActivity extends Activity {
     private String fallbackName;
     private String fallbackUrl;
     private int currentIndex;
+    private final StringBuilder channelInput = new StringBuilder();
+    private final Runnable submitChannelInput = new Runnable() {
+        @Override
+        public void run() {
+            submitChannelInput();
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -112,6 +120,15 @@ public final class PlayerActivity extends Activity {
 
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (keyCode >= KeyEvent.KEYCODE_0 && keyCode <= KeyEvent.KEYCODE_9) {
+            appendChannelDigit(keyCode - KeyEvent.KEYCODE_0);
+            return true;
+        }
+        if ((keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)
+                && channelInput.length() > 0) {
+            submitChannelInput();
+            return true;
+        }
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP || keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
             int channelCount = PlaybackQueue.size();
             if (channelCount > 1) {
@@ -134,6 +151,7 @@ public final class PlayerActivity extends Activity {
     @Override
     protected void onStop() {
         overlayHandler.removeCallbacks(hideOverlay);
+        channelInputHandler.removeCallbacks(submitChannelInput);
         if (player != null) {
             player.pause();
         }
@@ -156,6 +174,8 @@ public final class PlayerActivity extends Activity {
             Toast.makeText(this, "频道地址无效", Toast.LENGTH_SHORT).show();
             return;
         }
+        channelInput.setLength(0);
+        channelInputHandler.removeCallbacks(submitChannelInput);
         currentIndex = channel == null ? 0 : index;
         title.setText(name == null ? "PENG影视" : name);
         channelNumber.setText(String.format(Locale.US, "%03d", currentIndex + 1));
@@ -165,6 +185,39 @@ public final class PlayerActivity extends Activity {
         player.setMediaItem(MediaItem.fromUri(Uri.parse(url)));
         player.prepare();
         player.play();
+    }
+
+    private void appendChannelDigit(int digit) {
+        if (channelInput.length() == 3) {
+            channelInput.setLength(0);
+        }
+        channelInput.append(digit);
+        title.setText("输入频道编号后按确认");
+        channelNumber.setText(channelInput.toString());
+        showChannelOverlay();
+        channelInputHandler.removeCallbacks(submitChannelInput);
+        channelInputHandler.postDelayed(submitChannelInput, 1500);
+    }
+
+    private void submitChannelInput() {
+        if (channelInput.length() == 0) {
+            return;
+        }
+        int channelNumberValue;
+        try {
+            channelNumberValue = Integer.parseInt(channelInput.toString());
+        } catch (NumberFormatException exception) {
+            channelInput.setLength(0);
+            return;
+        }
+        channelInput.setLength(0);
+        channelInputHandler.removeCallbacks(submitChannelInput);
+        int channelCount = PlaybackQueue.size();
+        if (channelNumberValue < 1 || channelNumberValue > channelCount) {
+            Toast.makeText(this, "没有编号 " + channelNumberValue + " 的频道", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        playChannel(channelNumberValue - 1);
     }
 
     private void showChannelOverlay() {
