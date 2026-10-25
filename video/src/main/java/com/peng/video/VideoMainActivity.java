@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.os.Bundle;
@@ -11,6 +12,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Xml;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
@@ -40,6 +42,7 @@ public final class VideoMainActivity extends Activity {
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private GridLayout channelList;
+    private ScrollView channelScroll;
     private TextView status;
     private View firstChannel;
     private boolean initialLoad = true;
@@ -84,13 +87,13 @@ public final class VideoMainActivity extends Activity {
         statusParams.topMargin = dp(12);
         root.addView(status, statusParams);
 
-        ScrollView scroll = new ScrollView(this);
-        scroll.setClipToPadding(false);
+        channelScroll = new ScrollView(this);
+        channelScroll.setClipToPadding(false);
         channelList = new GridLayout(this);
         channelList.setColumnCount(CHANNEL_COLUMN_COUNT);
         channelList.setPadding(0, dp(14), 0, dp(18));
-        scroll.addView(channelList);
-        root.addView(scroll, new LinearLayout.LayoutParams(
+        channelScroll.addView(channelList);
+        root.addView(channelScroll, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1.0f));
         setContentView(root);
     }
@@ -176,6 +179,38 @@ public final class VideoMainActivity extends Activity {
                     startPlayback(channelIndex);
                 }
             });
+            row.setOnKeyListener(new View.OnKeyListener() {
+                @Override
+                public boolean onKey(View view, int keyCode, KeyEvent event) {
+                    if (keyCode != KeyEvent.KEYCODE_DPAD_UP
+                            && keyCode != KeyEvent.KEYCODE_DPAD_DOWN
+                            && keyCode != KeyEvent.KEYCODE_DPAD_LEFT
+                            && keyCode != KeyEvent.KEYCODE_DPAD_RIGHT) {
+                        return false;
+                    }
+                    if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                        return true;
+                    }
+                    if (event.getAction() != KeyEvent.ACTION_UP) {
+                        return true;
+                    }
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                        return moveChannelFocus(channelIndex - CHANNEL_COLUMN_COUNT);
+                    }
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                        return moveChannelFocus(channelIndex + CHANNEL_COLUMN_COUNT);
+                    }
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT
+                            && channelIndex % CHANNEL_COLUMN_COUNT > 0) {
+                        return moveChannelFocus(channelIndex - 1);
+                    }
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
+                            && channelIndex % CHANNEL_COLUMN_COUNT < CHANNEL_COLUMN_COUNT - 1) {
+                        return moveChannelFocus(channelIndex + 1);
+                    }
+                    return false;
+                }
+            });
             GridLayout.LayoutParams params = new GridLayout.LayoutParams();
             params.width = channelCardWidth();
             params.height = programme == null ? dp(72) : dp(88);
@@ -215,6 +250,19 @@ public final class VideoMainActivity extends Activity {
         intent.putExtra(PlayerActivity.EXTRA_NAME, channel.name);
         intent.putExtra(PlayerActivity.EXTRA_URL, channel.url);
         startActivity(intent);
+    }
+
+    private boolean moveChannelFocus(int index) {
+        if (index < 0 || index >= channelList.getChildCount()) {
+            return true;
+        }
+        View target = channelList.getChildAt(index);
+        target.requestFocus();
+        Rect targetBounds = new Rect();
+        target.getDrawingRect(targetBounds);
+        targetBounds.offset(target.getLeft(), target.getTop());
+        channelScroll.requestChildRectangleOnScreen(channelList, targetBounds, true);
+        return true;
     }
 
     private void showEmpty(String message) {
