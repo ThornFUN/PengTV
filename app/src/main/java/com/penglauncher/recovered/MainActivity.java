@@ -68,7 +68,7 @@ public final class MainActivity extends BasePageActivity {
     private ViewFlipper pageSwitcher;
     private View firstHomeCard;
     private View firstAllAppsCard;
-    private TextView settingsButton;
+    private ImageView settingsButton;
     private int lastHomeFocusIndex;
     private ImageView homeBackground;
     private int currentPage;
@@ -315,9 +315,12 @@ public final class MainActivity extends BasePageActivity {
         welcomeParams.topMargin = dp(26);
         header.addView(createWelcomePanel(), welcomeParams);
 
-        settingsButton = text("设置", 17, Color.WHITE);
-        settingsButton.setGravity(Gravity.CENTER);
-        settingsButton.setPadding(dp(20), 0, dp(20), 0);
+        settingsButton = new ImageView(this);
+        settingsButton.setImageResource(android.R.drawable.ic_menu_manage);
+        settingsButton.setColorFilter(Color.WHITE, android.graphics.PorterDuff.Mode.SRC_IN);
+        settingsButton.setContentDescription("设置");
+        settingsButton.setScaleType(ImageView.ScaleType.CENTER);
+        settingsButton.setPadding(dp(14), dp(14), dp(14), dp(14));
         settingsButton.setClickable(true);
         setBackgroundCompat(settingsButton, interactiveBackground());
         applyTvFocusFeedback(settingsButton);
@@ -327,7 +330,7 @@ public final class MainActivity extends BasePageActivity {
                 FeatureActivity.open(MainActivity.this, FeatureActivity.SETTINGS);
             }
         });
-        header.addView(settingsButton, new LinearLayout.LayoutParams(dp(112), dp(52)));
+        header.addView(settingsButton, new LinearLayout.LayoutParams(dp(64), dp(52)));
         return header;
     }
 
