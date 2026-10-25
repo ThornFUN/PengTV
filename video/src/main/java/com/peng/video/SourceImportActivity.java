@@ -2,6 +2,7 @@ package com.peng.video;
 
 import android.app.Activity;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.os.Bundle;
@@ -121,12 +122,22 @@ public final class SourceImportActivity extends Activity {
         showingPhoneImport = true;
         LinearLayout root = pageRoot();
         root.addView(title("手机导入直播源"));
-        TextView address = description("正在启动导入服务...");
-        root.addView(address);
+        TextView instruction = description("请在手机浏览器中打开以下局域网地址");
+        instruction.setTextColor(Color.WHITE);
+        instruction.setTextSize(20);
+        LinearLayout.LayoutParams instructionParams =
+                (LinearLayout.LayoutParams) instruction.getLayoutParams();
+        instructionParams.topMargin = dp(32);
+        root.addView(instruction);
+        TextView address = importAddress("正在启动导入服务...");
+        LinearLayout.LayoutParams addressParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        addressParams.topMargin = dp(12);
+        root.addView(address, addressParams);
         TextView security = description("只在本页面打开期间可访问。请仅在可信局域网中使用，离开此页将自动关闭。");
         LinearLayout.LayoutParams securityParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        securityParams.topMargin = dp(22);
+        securityParams.topMargin = dp(28);
         root.addView(security, securityParams);
         TextView back = action("返回源设置");
         back.setOnClickListener(new View.OnClickListener() {
@@ -158,7 +169,7 @@ public final class SourceImportActivity extends Activity {
                         @Override
                         public void run() {
                             if (showingPhoneImport) {
-                                address.setText("请用手机浏览器打开：\n" + endpoint);
+                                address.setText(endpoint);
                             }
                         }
                     });
@@ -173,6 +184,7 @@ public final class SourceImportActivity extends Activity {
                             public void run() {
                                 if (showingPhoneImport) {
                                     address.setText("无法启动导入服务：端口 8081 可能正被占用。");
+                                    address.setTextSize(20);
                                 }
                             }
                         });
@@ -430,6 +442,18 @@ public final class SourceImportActivity extends Activity {
         view.setFocusable(true);
         view.setBackground(focusBackground());
         return view;
+    }
+
+    private TextView importAddress(String value) {
+        TextView address = new TextView(this);
+        address.setText(value);
+        address.setTextColor(Color.WHITE);
+        address.setTextSize(30);
+        address.setTypeface(Typeface.DEFAULT_BOLD);
+        address.setGravity(Gravity.CENTER);
+        address.setPadding(dp(28), dp(24), dp(28), dp(24));
+        address.setBackground(rounded(Color.rgb(42, 92, 151)));
+        return address;
     }
 
     private StateListDrawable focusBackground() {
