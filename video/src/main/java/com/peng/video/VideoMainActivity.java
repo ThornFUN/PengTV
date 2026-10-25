@@ -28,6 +28,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -54,6 +55,9 @@ public final class VideoMainActivity extends Activity {
     private int currentPage;
     private int defaultChannelCount;
     private boolean userSourceFailed;
+    private final Map<String, List<Integer>> categoryChannels = new LinkedHashMap<>();
+    private List<Integer> visibleChannelIndexes = Collections.emptyList();
+    private String selectedCategory;
     private boolean initialLoad = true;
 
     @Override
@@ -68,6 +72,15 @@ public final class VideoMainActivity extends Activity {
         super.onResume();
         reloadChannels(initialLoad);
         initialLoad = false;
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (selectedCategory != null) {
+            showCategoryList();
+            return;
+        }
+        super.onBackPressed();
     }
 
     private void buildScreen() {
@@ -175,6 +188,7 @@ public final class VideoMainActivity extends Activity {
         this.userSourceFailed = userSourceFailed;
         this.defaultChannelCount = defaultChannelCount;
         PlaybackQueue.setChannels(channels);
+        buildCategoryChannels();
         if (autoPlayLastChannel) {
             int lastChannelIndex = findChannelIndex(VideoPreferences.lastChannelUrl(this), channels);
             if (lastChannelIndex >= 0) {
@@ -182,28 +196,124 @@ public final class VideoMainActivity extends Activity {
                 return;
             }
         }
+        showCategoryList();
+    }
+
+    private void buildCategoryChannels() {
+        categoryChannels.clear();
+        for (int index = 0; index < allChannels.size(); index++) {
+            String category = channelCategory(allChannels.get(index));
+            List<Integer> indexes = categoryChannels.get(category);
+            if (indexes == null) {
+                indexes = new ArrayList<>();
+                categoryChannels.put(category, indexes);
+            }
+            indexes.add(index);
+        }
+    }
+
+    private void showCategoryList() {
+        selectedCategory = null;
+        visibleChannelIndexes = Collections.emptyList();
+        channelList.removeAllViews();
+        channelScroll.scrollTo(0, 0);
+        status.setText("已加载 " + allChannels.size() + " 个频道，请先选择分类"
+                + (userSourceFailed ? "；追加播放列表加载失败，仍可播放默认频道。"
+                : channelGuide.failed ? "；节目单加载失败，仍可播放频道。" : ""));
+        int index = 0;
+        for (final Map.Entry<String, List<Integer>> entry : categoryChannels.entrySet()) {
+            final int categoryIndex = index++;
+            TextView row = action(entry.getKey() + "\n" + entry.getValue().size() + " 个频道");
+            row.setTextSize(20);
+            row.setGravity(Gravity.CENTER);
+            row.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    showCategoryChannels(entry.getKey());
+                }
+            });
+            row.setOnKeyListener(new View.OnKeyListener() {
+                @Override
+                public boolean onKey(View view, int keyCode, KeyEvent event) {
+                    if (keyCode != KeyEvent.KEYCODE_DPAD_UP
+                            && keyCode != KeyEvent.KEYCODE_DPAD_DOWN
+                            && keyCode != KeyEvent.KEYCODE_DPAD_LEFT
+                            && keyCode != KeyEvent.KEYCODE_DPAD_RIGHT) {
+                        return false;
+                    }
+                    if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                        return true;
+                    }
+                    if (event.getAction() != KeyEvent.ACTION_UP) {
+                        return true;
+                    }
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                        if (categoryIndex < CHANNEL_COLUMN_COUNT && sourceSettings != null) {
+                            sourceSettings.requestFocus();
+                            return true;
+                        }
+                        return moveCategoryFocus(categoryIndex - CHANNEL_COLUMN_COUNT);
+                    }
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                        return moveCategoryFocus(categoryIndex + CHANNEL_COLUMN_COUNT);
+                    }
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT
+                            && categoryIndex % CHANNEL_COLUMN_COUNT > 0) {
+                        return moveCategoryFocus(categoryIndex - 1);
+                    }
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
+                            && categoryIndex % CHANNEL_COLUMN_COUNT < CHANNEL_COLUMN_COUNT - 1) {
+                        return moveCategoryFocus(categoryIndex + 1);
+                    }
+                    return false;
+                }
+            });
+            GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+            params.width = channelCardWidth();
+            params.height = dp(100);
+            params.setMargins(0, 0,
+                    categoryIndex % CHANNEL_COLUMN_COUNT == CHANNEL_COLUMN_COUNT - 1 ? 0 : dp(14),
+                    dp(14));
+            channelList.addView(row, params);
+            if (categoryIndex == 0) {
+                firstChannel = row;
+            }
+        }
+        if (firstChannel != null) {
+            firstChannel.requestFocus();
+        }
+    }
+
+    private void showCategoryChannels(String category) {
+        selectedCategory = category;
+        List<Integer> indexes = categoryChannels.get(category);
+        visibleChannelIndexes = indexes == null ? Collections.<Integer>emptyList() : indexes;
         showChannelPage(0);
     }
 
     private void showChannelPage(int page) {
-        int pageCount = (allChannels.size() + CHANNELS_PER_PAGE - 1) / CHANNELS_PER_PAGE;
+        int pageCount = (visibleChannelIndexes.size() + CHANNELS_PER_PAGE - 1)
+                / CHANNELS_PER_PAGE;
         if (page < 0 || page >= pageCount) {
             return;
         }
         currentPage = page;
         channelList.removeAllViews();
+        channelScroll.scrollTo(0, 0);
         firstChannel = null;
         int startIndex = page * CHANNELS_PER_PAGE;
-        int endIndex = Math.min(startIndex + CHANNELS_PER_PAGE, allChannels.size());
-        status.setText("已加载 " + allChannels.size() + " 个频道（含 "
-                + defaultChannelCount + " 个默认频道），第 " + (page + 1) + "/" + pageCount + " 页"
+        int endIndex = Math.min(startIndex + CHANNELS_PER_PAGE, visibleChannelIndexes.size());
+        status.setText(selectedCategory + " · " + visibleChannelIndexes.size() + " 个频道，第 "
+                + (page + 1) + "/" + pageCount + " 页"
                 + (userSourceFailed ? "；追加播放列表加载失败，仍可播放默认频道。"
                 : channelGuide.failed ? "；节目单加载失败，仍可播放频道。"
                 : channelGuide.programmes.isEmpty() ? "" : "，已显示节目单预览"));
-        for (int index = startIndex; index < endIndex; index++) {
-            final Channel channel = allChannels.get(index);
-            final int channelIndex = index;
-            String channelLabel = String.format(Locale.US, "%03d  %s", index + 1, channel.name);
+        for (int position = startIndex; position < endIndex; position++) {
+            final int channelIndex = visibleChannelIndexes.get(position);
+            final int channelPosition = position;
+            final Channel channel = allChannels.get(channelIndex);
+            String channelLabel = String.format(Locale.US, "%03d  %s", channelIndex + 1,
+                    channelDisplayName(channel));
             TextView row = action(channelLabel);
             String programme = channelGuide.programmes.get(channel.id);
             if (programme != null && programme.length() > 0) {
@@ -233,22 +343,22 @@ public final class VideoMainActivity extends Activity {
                         return true;
                     }
                     if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-                        if (channelIndex < CHANNEL_COLUMN_COUNT && sourceSettings != null) {
+                        if (channelPosition < CHANNEL_COLUMN_COUNT && sourceSettings != null) {
                             sourceSettings.requestFocus();
                             return true;
                         }
-                        return moveChannelFocus(channelIndex - CHANNEL_COLUMN_COUNT);
+                        return moveChannelFocus(channelPosition - CHANNEL_COLUMN_COUNT);
                     }
                     if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                        return moveChannelFocus(channelIndex + CHANNEL_COLUMN_COUNT);
+                        return moveChannelFocus(channelPosition + CHANNEL_COLUMN_COUNT);
                     }
                     if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT
-                            && channelIndex % CHANNEL_COLUMN_COUNT > 0) {
-                        return moveChannelFocus(channelIndex - 1);
+                            && channelPosition % CHANNEL_COLUMN_COUNT > 0) {
+                        return moveChannelFocus(channelPosition - 1);
                     }
                     if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
-                            && channelIndex % CHANNEL_COLUMN_COUNT < CHANNEL_COLUMN_COUNT - 1) {
-                        return moveChannelFocus(channelIndex + 1);
+                            && channelPosition % CHANNEL_COLUMN_COUNT < CHANNEL_COLUMN_COUNT - 1) {
+                        return moveChannelFocus(channelPosition + 1);
                     }
                     return false;
                 }
@@ -257,10 +367,10 @@ public final class VideoMainActivity extends Activity {
             params.width = channelCardWidth();
             params.height = programme == null ? dp(72) : dp(88);
             params.setMargins(0, 0,
-                    channelIndex % CHANNEL_COLUMN_COUNT == CHANNEL_COLUMN_COUNT - 1 ? 0 : dp(14),
+                    channelPosition % CHANNEL_COLUMN_COUNT == CHANNEL_COLUMN_COUNT - 1 ? 0 : dp(14),
                     dp(14));
             channelList.addView(row, params);
-            if (index == startIndex) {
+            if (position == startIndex) {
                 firstChannel = row;
             }
         }
@@ -295,7 +405,7 @@ public final class VideoMainActivity extends Activity {
     }
 
     private boolean moveChannelFocus(int index) {
-        if (index < 0 || index >= allChannels.size()) {
+        if (index < 0 || index >= visibleChannelIndexes.size()) {
             return true;
         }
         int targetPage = index / CHANNELS_PER_PAGE;
@@ -326,8 +436,30 @@ public final class VideoMainActivity extends Activity {
         channelScroll.requestChildRectangleOnScreen(channelList, targetBounds, true);
     }
 
+    private boolean moveCategoryFocus(int index) {
+        if (index < 0 || index >= channelList.getChildCount()) {
+            return true;
+        }
+        View target = channelList.getChildAt(index);
+        target.requestFocus();
+        return true;
+    }
+
+    private String channelCategory(Channel channel) {
+        int separator = channel.name.indexOf(" · ");
+        return separator > 0 ? channel.name.substring(0, separator) : "自定义频道";
+    }
+
+    private String channelDisplayName(Channel channel) {
+        int separator = channel.name.indexOf(" · ");
+        return separator > 0 ? channel.name.substring(separator + 3) : channel.name;
+    }
+
     private void showEmpty(String message) {
         allChannels = Collections.emptyList();
+        categoryChannels.clear();
+        visibleChannelIndexes = Collections.emptyList();
+        selectedCategory = null;
         channelList.removeAllViews();
         status.setText(message);
         TextView configure = action("配置直播源");
