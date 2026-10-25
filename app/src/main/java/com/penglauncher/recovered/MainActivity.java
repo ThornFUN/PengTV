@@ -202,10 +202,13 @@ public final class MainActivity extends BasePageActivity {
         LinearLayout homePage = new LinearLayout(this);
         homePage.setOrientation(LinearLayout.VERTICAL);
         homePage.setPadding(dp(34), dp(20), dp(34), dp(30));
+        allowFocusOverflow(homePage);
         homePage.addView(createWelcomePanel());
         cardGrid = new LinearLayout(this);
         cardGrid.setOrientation(LinearLayout.VERTICAL);
+        allowFocusOverflow(cardGrid);
         FrameLayout cardArea = new FrameLayout(this);
+        allowFocusOverflow(cardArea);
         LinearLayout.LayoutParams cardAreaParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1.0f);
         cardAreaParams.topMargin = dp(22);
@@ -220,13 +223,15 @@ public final class MainActivity extends BasePageActivity {
     private View createAllAppsPage() {
         ScrollView allAppsScroll = new ScrollView(this);
         allAppsScroll.setFillViewport(true);
-        allAppsScroll.setClipToPadding(false);
+        allowFocusOverflow(allAppsScroll);
         allAppsScroll.setPadding(dp(34), dp(20), dp(34), dp(30));
         allAppsScroll.setBackgroundColor(Color.rgb(15, 29, 49));
         LinearLayout allAppsContent = new LinearLayout(this);
         allAppsContent.setOrientation(LinearLayout.VERTICAL);
+        allowFocusOverflow(allAppsContent);
         allAppsGrid = new LinearLayout(this);
         allAppsGrid.setOrientation(LinearLayout.VERTICAL);
+        allowFocusOverflow(allAppsGrid);
         allAppsContent.addView(allAppsGrid, new LinearLayout.LayoutParams(
                 ScrollView.LayoutParams.MATCH_PARENT, ScrollView.LayoutParams.WRAP_CONTENT));
         allAppsScroll.addView(allAppsContent, new ScrollView.LayoutParams(
@@ -263,6 +268,7 @@ public final class MainActivity extends BasePageActivity {
             if (index % COLUMN_COUNT == 0) {
                 row = new LinearLayout(this);
                 row.setOrientation(LinearLayout.HORIZONTAL);
+                allowFocusOverflow(row);
                 cardGrid.addView(row, new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -290,6 +296,7 @@ public final class MainActivity extends BasePageActivity {
             if (index % 6 == 0) {
                 row = new LinearLayout(this);
                 row.setOrientation(LinearLayout.HORIZONTAL);
+                allowFocusOverflow(row);
                 allAppsGrid.addView(row, new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -518,6 +525,11 @@ public final class MainActivity extends BasePageActivity {
             }
         });
         return card;
+    }
+
+    private void allowFocusOverflow(ViewGroup container) {
+        container.setClipChildren(false);
+        container.setClipToPadding(false);
     }
 
     private LinearLayout.LayoutParams gridParams() {
