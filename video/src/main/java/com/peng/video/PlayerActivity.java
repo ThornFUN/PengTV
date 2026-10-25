@@ -1,6 +1,7 @@
 package com.peng.video;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
@@ -40,6 +41,7 @@ public final class PlayerActivity extends Activity {
     private String fallbackName;
     private String fallbackUrl;
     private int currentIndex;
+    private long lastBackPressedAt;
     private final StringBuilder channelInput = new StringBuilder();
     private final Runnable submitChannelInput = new Runnable() {
         @Override
@@ -120,6 +122,12 @@ public final class PlayerActivity extends Activity {
 
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_MENU) {
+            Intent intent = new Intent(this, VideoMainActivity.class);
+            intent.putExtra(VideoMainActivity.EXTRA_CHANNEL_LIST_ONLY, true);
+            startActivity(intent);
+            return true;
+        }
         if (keyCode >= KeyEvent.KEYCODE_0 && keyCode <= KeyEvent.KEYCODE_9) {
             appendChannelDigit(keyCode - KeyEvent.KEYCODE_0);
             return true;
@@ -146,6 +154,17 @@ public final class PlayerActivity extends Activity {
             return true;
         }
         return super.onKeyUp(keyCode, event);
+    }
+
+    @Override
+    public void onBackPressed() {
+        long now = System.currentTimeMillis();
+        if (now - lastBackPressedAt <= 2000) {
+            finishAffinity();
+            return;
+        }
+        lastBackPressedAt = now;
+        Toast.makeText(this, "再按一次返回退出 PENG影视", Toast.LENGTH_SHORT).show();
     }
 
     @Override

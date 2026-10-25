@@ -35,6 +35,7 @@ import java.util.regex.Pattern;
 import org.xmlpull.v1.XmlPullParser;
 
 public final class VideoMainActivity extends Activity {
+    public static final String EXTRA_CHANNEL_LIST_ONLY = "channel_list_only";
     private static final int MAX_PLAYLIST_CHARACTERS = 2 * 1024 * 1024;
     private static final int CHANNEL_COLUMN_COUNT = 3;
     private static final Pattern ATTRIBUTE_PATTERN =
@@ -50,6 +51,7 @@ public final class VideoMainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        initialLoad = !getIntent().getBooleanExtra(EXTRA_CHANNEL_LIST_ONLY, false);
         buildScreen();
     }
 
