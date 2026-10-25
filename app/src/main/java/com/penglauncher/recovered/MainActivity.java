@@ -68,7 +68,7 @@ public final class MainActivity extends BasePageActivity {
     private ViewFlipper pageSwitcher;
     private View firstHomeCard;
     private View firstAllAppsCard;
-    private ImageView settingsButton;
+    private TextView settingsButton;
     private int lastHomeFocusIndex;
     private ImageView homeBackground;
     private int currentPage;
@@ -157,6 +157,12 @@ public final class MainActivity extends BasePageActivity {
                 settingsButton.requestFocus();
             }
         }, 100L);
+    }
+
+    private void hideSettingsButton() {
+        if (settingsButton != null) {
+            settingsButton.setVisibility(View.GONE);
+        }
     }
 
     @Override
@@ -338,11 +344,10 @@ public final class MainActivity extends BasePageActivity {
         welcomeParams.topMargin = dp(26);
         header.addView(createWelcomePanel(), welcomeParams);
 
-        settingsButton = new ImageView(this);
-        settingsButton.setImageResource(R.drawable.ic_settings_gear);
+        settingsButton = text("设置", 17, Color.WHITE);
         settingsButton.setContentDescription("设置");
-        settingsButton.setScaleType(ImageView.ScaleType.CENTER);
-        settingsButton.setPadding(dp(14), dp(14), dp(14), dp(14));
+        settingsButton.setGravity(Gravity.CENTER);
+        settingsButton.setPadding(dp(16), 0, dp(16), 0);
         settingsButton.setClickable(true);
         setBackgroundCompat(settingsButton, interactiveBackground());
         settingsButton.setFocusable(true);
@@ -385,7 +390,7 @@ public final class MainActivity extends BasePageActivity {
                 return false;
             }
         });
-        header.addView(settingsButton, new LinearLayout.LayoutParams(dp(64), dp(52)));
+        header.addView(settingsButton, new LinearLayout.LayoutParams(dp(96), dp(52)));
         settingsButton.setVisibility(View.GONE);
         return header;
     }
@@ -471,12 +476,16 @@ public final class MainActivity extends BasePageActivity {
         card.setOnKeyListener(new View.OnKeyListener() {
             @Override
             public boolean onKey(View view, int keyCode, KeyEvent event) {
-                if (event.getAction() != KeyEvent.ACTION_DOWN) {
+                if (keyCode == KeyEvent.KEYCODE_MENU) {
+                    if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                        showCardMenu(index, app.label);
+                        return true;
+                    }
                     return false;
                 }
-                if (keyCode == KeyEvent.KEYCODE_MENU) {
-                    showCardMenu(index, app.label);
-                    return true;
+                if (event.getAction() != KeyEvent.ACTION_DOWN
+                        && event.getAction() != KeyEvent.ACTION_UP) {
+                    return false;
                 }
                 if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
                     showAllAppsPage();
@@ -510,14 +519,20 @@ public final class MainActivity extends BasePageActivity {
         card.setOnKeyListener(new View.OnKeyListener() {
             @Override
             public boolean onKey(View view, int keyCode, KeyEvent event) {
-                if (event.getAction() != KeyEvent.ACTION_DOWN) {
+                if (keyCode == KeyEvent.KEYCODE_MENU) {
+                    if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                        showAllAppsMenu(app);
+                        return true;
+                    }
                     return false;
                 }
-                if (keyCode == KeyEvent.KEYCODE_MENU) {
-                    showAllAppsMenu(app);
-                    return true;
+                if (event.getAction() != KeyEvent.ACTION_DOWN
+                        && event.getAction() != KeyEvent.ACTION_UP) {
+                    return false;
                 }
-                if (index < COLUMN_COUNT && keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                if (index < COLUMN_COUNT
+                        && keyCode == KeyEvent.KEYCODE_DPAD_UP
+                        && event.getAction() == KeyEvent.ACTION_UP) {
                     showHomePage();
                     return true;
                 }
@@ -631,7 +646,8 @@ public final class MainActivity extends BasePageActivity {
         card.setOnKeyListener(new View.OnKeyListener() {
             @Override
             public boolean onKey(View view, int keyCode, KeyEvent event) {
-                if (event.getAction() != KeyEvent.ACTION_DOWN) {
+                if (event.getAction() != KeyEvent.ACTION_DOWN
+                        && event.getAction() != KeyEvent.ACTION_UP) {
                     return false;
                 }
                 if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
@@ -648,6 +664,7 @@ public final class MainActivity extends BasePageActivity {
         if (currentPage == 1) {
             return;
         }
+        hideSettingsButton();
         pageSwitcher.setInAnimation(slideAnimation(1.0f, 0.0f));
         pageSwitcher.setOutAnimation(slideAnimation(0.0f, -1.0f));
         pageSwitcher.setDisplayedChild(1);
@@ -698,6 +715,7 @@ public final class MainActivity extends BasePageActivity {
         if (currentPage == 0) {
             return;
         }
+        hideSettingsButton();
         pageSwitcher.setInAnimation(slideAnimation(-1.0f, 0.0f));
         pageSwitcher.setOutAnimation(slideAnimation(0.0f, 1.0f));
         pageSwitcher.setDisplayedChild(0);
@@ -705,7 +723,8 @@ public final class MainActivity extends BasePageActivity {
         pageSwitcher.post(new Runnable() {
             @Override
             public void run() {
-                focusHomeCard(lastHomeFocusIndex);
+                hideSettingsButton();
+                focusHomeCard(0);
             }
         });
     }
