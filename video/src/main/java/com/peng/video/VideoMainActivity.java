@@ -210,7 +210,36 @@ public final class VideoMainActivity extends Activity {
                 return;
             }
         }
+        if (restoreChannelListState()) {
+            return;
+        }
         showCategoryList();
+    }
+
+    private boolean restoreChannelListState() {
+        if (selectedCategory == null || !categoryChannels.containsKey(selectedCategory)) {
+            return false;
+        }
+        int previousPage = currentPage;
+        int previousFocusedChannelIndex = focusedChannelIndex;
+        showCategoryChannels(selectedCategory);
+        int pageCount = (visibleChannelIndexes.size() + CHANNELS_PER_PAGE - 1) / CHANNELS_PER_PAGE;
+        if (pageCount == 0) {
+            return false;
+        }
+        currentPage = Math.min(previousPage, pageCount - 1);
+        showChannelPage(currentPage);
+        int focusedPosition = visibleChannelIndexes.indexOf(previousFocusedChannelIndex);
+        if (focusedPosition >= 0) {
+            final int position = focusedPosition;
+            channelList.post(new Runnable() {
+                @Override
+                public void run() {
+                    focusChannel(position);
+                }
+            });
+        }
+        return true;
     }
 
     private void buildCategoryChannels() {

@@ -22,6 +22,10 @@ final class PlaybackQueue {
         return channels.size();
     }
 
+    static synchronized VideoMainActivity.Channel removeAt(int index) {
+        return index >= 0 && index < channels.size() ? channels.remove(index) : null;
+    }
+
     static synchronized List<VideoMainActivity.Channel> channels() {
         return new ArrayList<>(channels);
     }

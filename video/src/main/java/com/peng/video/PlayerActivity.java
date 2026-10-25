@@ -90,7 +90,6 @@ public final class PlayerActivity extends Activity {
     private String selectedDrawerCategory;
     private int drawerPage;
     private View hiddenChannelsButton;
-    private int focusedDrawerChannelIndex = -1;
     private boolean linePreviewing;
     private int linePreviewStartIndex;
 
@@ -198,14 +197,18 @@ public final class PlayerActivity extends Activity {
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_MENU) {
-            if (channelDrawer.getVisibility() == View.VISIBLE && focusedDrawerChannelIndex >= 0) {
-                confirmHideChannel(focusedDrawerChannelIndex);
+            int focusedChannelIndex = focusedDrawerChannelIndex();
+            if (channelDrawer.getVisibility() == View.VISIBLE && focusedChannelIndex >= 0) {
+                confirmHideChannel(focusedChannelIndex);
                 return true;
             }
             toggleChannelDrawer();
             return true;
         }
         if (keyCode >= KeyEvent.KEYCODE_0 && keyCode <= KeyEvent.KEYCODE_9) {
+            if (channelDrawer.getVisibility() == View.VISIBLE) {
+                return true;
+            }
             appendChannelDigit(keyCode - KeyEvent.KEYCODE_0);
             return true;
         }
@@ -220,6 +223,9 @@ public final class PlayerActivity extends Activity {
             return true;
         }
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP || keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+            if (channelDrawer.getVisibility() == View.VISIBLE) {
+                return true;
+            }
             int channelCount = PlaybackQueue.size();
             if (channelCount > 1) {
                 int offset = keyCode == KeyEvent.KEYCODE_DPAD_UP ? -1 : 1;
@@ -386,9 +392,14 @@ public final class PlayerActivity extends Activity {
         }
         showDrawerCategory(category);
         channelDrawer.setVisibility(View.VISIBLE);
-        View categoryView = drawerCategoryViews.get(category);
-        if (categoryView != null) {
-            categoryView.requestFocus();
+        int currentPosition = visibleDrawerIndexes.indexOf(currentIndex);
+        if (currentPosition >= 0) {
+            focusDrawerChannel(currentPosition);
+        } else {
+            View categoryView = drawerCategoryViews.get(category);
+            if (categoryView != null) {
+                categoryView.requestFocus();
+            }
         }
     }
 
@@ -416,6 +427,27 @@ public final class PlayerActivity extends Activity {
                 startActivity(new Intent(PlayerActivity.this, HiddenChannelsActivity.class));
             }
         });
+        hiddenChannelsButton.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View view, int keyCode, KeyEvent event) {
+                if (keyCode != KeyEvent.KEYCODE_DPAD_UP
+                        && keyCode != KeyEvent.KEYCODE_DPAD_DOWN
+                        && keyCode != KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    return false;
+                }
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    return true;
+                }
+                if (event.getAction() != KeyEvent.ACTION_UP) {
+                    return true;
+                }
+                if ((keyCode == KeyEvent.KEYCODE_DPAD_DOWN || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT)
+                        && !drawerCategoryNames.isEmpty()) {
+                    drawerCategoryViews.get(drawerCategoryNames.get(0)).requestFocus();
+                }
+                return true;
+            }
+        });
         LinearLayout.LayoutParams hiddenParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, dp(64));
         hiddenParams.bottomMargin = dp(18);
@@ -429,7 +461,6 @@ public final class PlayerActivity extends Activity {
                 @Override
                 public void onFocusChange(View view, boolean focused) {
                     if (focused) {
-                        focusedDrawerChannelIndex = -1;
                         showDrawerCategory(category);
                     }
                 }
@@ -505,16 +536,14 @@ public final class PlayerActivity extends Activity {
             final int channelPosition = position;
             final int channelIndex = visibleDrawerIndexes.get(position);
             VideoMainActivity.Channel channel = PlaybackQueue.channelAt(channelIndex);
-            TextView item = drawerAction(String.format(Locale.US, "%03d  %s", channelIndex + 1,
-                    channelDisplayName(channel)));
-            item.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-                @Override
-                public void onFocusChange(View view, boolean focused) {
-                    if (focused) {
-                        focusedDrawerChannelIndex = channelIndex;
-                    }
-                }
-            });
+            String channelText = String.format(Locale.US, "%03d  %s", channelIndex + 1,
+                    channelDisplayName(channel));
+            if (channelIndex == currentIndex) {
+                channelText += "\n正在播放";
+            }
+            TextView item = drawerAction(channelText);
+            item.setTag(Integer.valueOf(channelIndex));
+            item.setSelected(channelIndex == currentIndex);
             item.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
@@ -632,6 +661,12 @@ public final class PlayerActivity extends Activity {
         return (drawerWidth - dp(250) - dp(58) - spacing) / DRAWER_COLUMN_COUNT;
     }
 
+    private int focusedDrawerChannelIndex() {
+        View focus = getCurrentFocus();
+        Object tag = focus == null ? null : focus.getTag();
+        return tag instanceof Integer ? (Integer) tag : -1;
+    }
+
     private void confirmHideChannel(final int index) {
         final VideoMainActivity.Channel channel = PlaybackQueue.channelAt(index);
         if (channel == null) {
@@ -645,12 +680,41 @@ public final class PlayerActivity extends Activity {
                 .setPositiveButton("隐藏", (dialog, which) -> {
                     VideoPreferences.hideChannel(PlayerActivity.this, channel.name);
                     Toast.makeText(PlayerActivity.this, "频道已隐藏", Toast.LENGTH_SHORT).show();
-                    Intent intent = new Intent(PlayerActivity.this, VideoMainActivity.class);
-                    intent.putExtra(VideoMainActivity.EXTRA_CHANNEL_LIST_ONLY, true);
-                    startActivity(intent);
-                    finish();
+                    hideChannelFromDrawer(index);
                 })
                 .show();
+    }
+
+    private void hideChannelFromDrawer(int index) {
+        if (PlaybackQueue.removeAt(index) == null) {
+            return;
+        }
+        int channelCount = PlaybackQueue.size();
+        if (channelCount == 0) {
+            Toast.makeText(this, "已没有可播放频道", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+        if (index == currentIndex) {
+            playChannel(Math.min(index, channelCount - 1));
+        } else if (index < currentIndex) {
+            currentIndex--;
+            channelNumber.setText(String.format(Locale.US, "%03d", currentIndex + 1));
+        }
+        refreshChannelDrawer();
+    }
+
+    private void refreshChannelDrawer() {
+        buildDrawerCategories();
+        String category = channelCategory(PlaybackQueue.channelAt(currentIndex));
+        if (!drawerCategoryIndexes.containsKey(category) && !drawerCategoryNames.isEmpty()) {
+            category = drawerCategoryNames.get(0);
+        }
+        showDrawerCategory(category);
+        int currentPosition = visibleDrawerIndexes.indexOf(currentIndex);
+        if (currentPosition >= 0) {
+            focusDrawerChannel(currentPosition);
+        }
     }
 
     private StateListDrawable focusBackground() {
@@ -658,6 +722,7 @@ public final class PlayerActivity extends Activity {
         GradientDrawable focused = rounded(Color.rgb(62, 119, 184));
         focused.setStroke(dp(2), Color.WHITE);
         drawable.addState(new int[]{android.R.attr.state_focused}, focused);
+        drawable.addState(new int[]{android.R.attr.state_selected}, rounded(Color.rgb(46, 92, 143)));
         drawable.addState(new int[]{}, rounded(Color.argb(220, 35, 57, 88)));
         return drawable;
     }
