@@ -296,12 +296,12 @@ public final class MainActivity extends BasePageActivity {
 
         timeView = new TextView(this);
         timeView.setTextColor(Color.WHITE);
-        timeView.setTextSize(38);
+        timeView.setTextSize(50);
         panel.addView(timeView);
 
         dateView = new TextView(this);
         dateView.setTextColor(Color.rgb(213, 225, 244));
-        dateView.setTextSize(15);
+        dateView.setTextSize(19);
         panel.addView(dateView);
 
         return panel;
