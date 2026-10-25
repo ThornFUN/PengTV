@@ -356,9 +356,9 @@ public final class FeatureActivity extends BasePageActivity {
                     }
                 });
                 writeResponse(output, 200, "text/plain; charset=utf-8",
-                        "Wallpaper updated. Return to the TV home screen to view it.");
+                        "壁纸已更新，返回电视首页即可查看效果。");
             } catch (IOException exception) {
-                writeResponse(output, 400, "text/plain; charset=utf-8", "Unable to save image");
+                writeResponse(output, 400, "text/plain; charset=utf-8", "无法保存图片，请重试。");
             }
         }
 
@@ -410,26 +410,53 @@ public final class FeatureActivity extends BasePageActivity {
                     + "button{width:100%;margin-top:16px;padding:15px;border:0;border-radius:14px;color:#fff;"
                     + "font-size:16px;font-weight:600;background:#347fc4;cursor:pointer}button:disabled{opacity:.45;"
                     + "cursor:not-allowed}.status{min-height:22px;margin:16px 0 0;text-align:center;color:#b8cbe3;"
-                    + "font-size:14px}.success{color:#79e4ad}.error{color:#ff9e9e}</style></head><body>"
+                    + "font-size:14px}.success{color:#79e4ad}.error{color:#ff9e9e}.editor{margin-top:20px}"
+                    + ".editor[hidden]{display:none}.crop{display:block;width:100%;aspect-ratio:16/9;border-radius:"
+                    + "14px;background:#091522;touch-action:none}.controls{margin-top:14px}.controls label{display:block;"
+                    + "margin-bottom:8px;color:#b8cbe3;font-size:14px}.controls input{display:block;width:100%;accent-color:"
+                    + "#5ba8ed}.tip{margin:10px 0 0;color:#9fc3e8;font-size:13px;line-height:1.5}</style></head><body>"
                     + "<main class=\"card\"><span class=\"badge\">PENG 桌面</span><h1 class=\"title\">上传首页壁纸</h1>"
-                    + "<p class=\"hint\">选择一张不超过 8MB 的图片。上传成功后，返回电视首页即可看到新壁纸。</p>"
+                    + "<p class=\"hint\">选择图片后可拖动和缩放，以适配电视的 16:9 屏幕比例。</p>"
                     + "<label class=\"picker\" for=\"image\"><strong id=\"fileTitle\">选择图片</strong>"
                     + "<span id=\"fileHint\">支持手机相册中的常见图片格式</span></label>"
                     + "<input id=\"image\" type=\"file\" accept=\"image/*\" onchange=\"selectImage()\">"
-                    + "<button id=\"submit\" onclick=\"upload()\" disabled>上传并应用壁纸</button>"
+                    + "<section id=\"editor\" class=\"editor\" hidden><canvas id=\"crop\" class=\"crop\" width=\"960\" "
+                    + "height=\"540\"></canvas><div class=\"controls\"><label for=\"zoom\">缩放画面</label>"
+                    + "<input id=\"zoom\" type=\"range\" min=\"1\" max=\"3\" step=\"0.01\" value=\"1\" "
+                    + "oninput=\"changeZoom()\"></div><p class=\"tip\">拖动图片调整显示区域，上传后会生成 1920×1080 的壁纸。</p>"
+                    + "</section><button id=\"submit\" onclick=\"upload()\" disabled>裁剪并上传壁纸</button>"
                     + "<p id=\"status\" class=\"status\"></p></main><script>"
-                    + "function selectImage(){var f=document.getElementById('image').files[0],b=document.getElementById('submit');"
-                    + "if(!f){return;}document.getElementById('fileTitle').textContent=f.name;"
+                    + "var image,view,drag;function selectImage(){var f=document.getElementById('image').files[0],b="
+                    + "document.getElementById('submit');if(!f){return;}document.getElementById('fileTitle').textContent=f.name;"
                     + "if(f.size>8*1024*1024){document.getElementById('fileHint').textContent='图片超过 8MB，请重新选择';"
-                    + "document.getElementById('status').textContent='';b.disabled=true;return;}"
-                    + "document.getElementById('fileHint').textContent='文件大小：'+Math.ceil(f.size/1024)+' KB';"
-                    + "document.getElementById('status').textContent='';b.disabled=false;}"
-                    + "function upload(){var f=document.getElementById('image').files[0],b=document.getElementById('submit'),"
-                    + "s=document.getElementById('status');if(!f){return;}b.disabled=true;s.className='status';"
-                    + "s.textContent='正在上传，请稍候...';var r=new XMLHttpRequest();r.open('POST','/upload');"
-                    + "r.onload=function(){s.textContent=r.responseText;s.className='status '+(r.status===200?'success':'error');"
-                    + "b.disabled=false;};r.onerror=function(){s.textContent='上传失败，请确认电视和手机仍在同一局域网';"
-                    + "s.className='status error';b.disabled=false;};r.send(f);}</script></body></html>";
+                    + "document.getElementById('editor').hidden=true;b.disabled=true;return;}image=new Image();"
+                    + "image.onload=function(){initCrop();document.getElementById('editor').hidden=false;b.disabled=false;};"
+                    + "image.src=URL.createObjectURL(f);document.getElementById('fileHint').textContent='请拖动和缩放后上传';"
+                    + "document.getElementById('status').textContent='';}"
+                    + "function initCrop(){var c=document.getElementById('crop'),base=Math.max(c.width/image.width,c.height/image.height);"
+                    + "view={scale:base,x:(c.width-image.width*base)/2,y:(c.height-image.height*base)/2,base:base};"
+                    + "document.getElementById('zoom').value=1;draw();}function changeZoom(){view.scale=view.base*"
+                    + "parseFloat(document.getElementById('zoom').value);limit();draw();}function limit(){var c=document.getElementById('crop'),"
+                    + "w=image.width*view.scale,h=image.height*view.scale;view.x=Math.min(0,Math.max(c.width-w,view.x));"
+                    + "view.y=Math.min(0,Math.max(c.height-h,view.y));}function draw(){var c=document.getElementById('crop'),g=c.getContext('2d');"
+                    + "g.clearRect(0,0,c.width,c.height);g.drawImage(image,view.x,view.y,image.width*view.scale,image.height*view.scale);}"
+                    + "function point(t){var c=document.getElementById('crop'),r=c.getBoundingClientRect();return{x:(t.clientX-r.left)*c.width/r.width,"
+                    + "y:(t.clientY-r.top)*c.height/r.height};}function begin(t){var p=point(t);drag={x:p.x,y:p.y,left:view.x,top:view.y};}"
+                    + "function move(t){if(!drag){return;}var p=point(t);view.x=drag.left+p.x-drag.x;view.y=drag.top+p.y-drag.y;limit();draw();}"
+                    + "var crop=document.getElementById('crop');crop.addEventListener('touchstart',function(e){begin(e.touches[0]);e.preventDefault();},false);"
+                    + "crop.addEventListener('touchmove',function(e){move(e.touches[0]);e.preventDefault();},false);"
+                    + "crop.addEventListener('touchend',function(){drag=null;},false);crop.addEventListener('mousedown',function(e){begin(e);},false);"
+                    + "window.addEventListener('mousemove',function(e){move(e);},false);window.addEventListener('mouseup',function(){drag=null;},false);"
+                    + "function upload(){var b=document.getElementById('submit'),s=document.getElementById('status'),c=document.getElementById('crop');"
+                    + "if(!image||!c.toBlob){s.textContent='当前浏览器不支持图片裁剪';s.className='status error';return;}b.disabled=true;"
+                    + "s.className='status';s.textContent='正在裁剪图片...';var out=document.createElement('canvas');out.width=1920;out.height=1080;"
+                    + "var g=out.getContext('2d'),sx=-view.x/view.scale,sy=-view.y/view.scale,sw=c.width/view.scale,sh=c.height/view.scale;"
+                    + "g.drawImage(image,sx,sy,sw,sh,0,0,out.width,out.height);out.toBlob(function(blob){if(!blob||blob.size>8*1024*1024){"
+                    + "s.textContent='裁剪后的图片超过 8MB，请降低图片细节后重试';s.className='status error';b.disabled=false;return;}"
+                    + "s.textContent='正在上传，请稍候...';var r=new XMLHttpRequest();r.open('POST','/upload');r.onload=function(){s.textContent="
+                    + "r.responseText;s.className='status '+(r.status===200?'success':'error');b.disabled=false;};r.onerror=function(){"
+                    + "s.textContent='上传失败，请确认电视和手机仍在同一局域网';s.className='status error';b.disabled=false;};r.send(blob);},'image/jpeg',.92);}"
+                    + "</script></body></html>";
         }
     }
 
