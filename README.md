@@ -62,6 +62,29 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 首次使用时，在系统设置中将 **PENG 桌面** 设为默认桌面应用，或从应用列表直接启动。
 
+## PENG影视
+
+`video/` 是与 PENG 桌面同仓库、但可独立安装的 IPTV 应用，包名为
+`com.peng.video`。它不声明 HOME，不会改变默认桌面。
+
+- 仅播放用户导入且有权使用的 M3U 频道源，不内置频道或影视内容。
+- 可选导入 XMLTV 地址，在频道列表中显示节目单预览。
+- 可在电视端填写地址，或在“手机导入”页使用同一局域网手机访问电视
+  `8081` 端口填写地址；该服务只在导入页面可见时运行。
+- 采用 Android 系统播放器，适合设备自身支持的 HTTP/HLS 流。
+
+单独构建 PENG影视：
+
+```bash
+./gradlew :video:assembleRelease
+```
+
+签名后的 APK 输出到：
+
+```text
+video/build/outputs/apk/release/PENG-Video-v<version>-release.apk
+```
+
 ## 遥控器操作
 
 | 场景 | 按键 | 行为 |
@@ -129,6 +152,10 @@ app/
     res/
       drawable-nodpi/          # 首页背景和 PENG Logo
       values/                  # 应用名称与主题
+video/
+  src/main/
+    java/com/peng/video/       # IPTV 播放、源配置和手机导入服务
+    res/                       # PENG影视主题和 TV Banner
 RECOVERY.md                    # 原 APK 结构和恢复记录
 TV_UI_SPEC.md                  # TV 焦点与设置页面 UI 强制规范
 ```
