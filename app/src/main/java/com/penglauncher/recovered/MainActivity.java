@@ -852,6 +852,7 @@ public final class MainActivity extends BasePageActivity {
         Intent intent = new Intent(Intent.ACTION_MAIN);
         intent.addCategory(Intent.CATEGORY_LAUNCHER);
         intent.setClassName(app.resolveInfo.activityInfo.packageName, app.resolveInfo.activityInfo.name);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         try {
             startActivity(intent);
         } catch (ActivityNotFoundException | SecurityException exception) {
