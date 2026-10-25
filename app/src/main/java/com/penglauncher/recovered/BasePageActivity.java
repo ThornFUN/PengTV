@@ -110,6 +110,29 @@ abstract class BasePageActivity extends Activity {
         content.addView(view);
     }
 
+    protected void addHighlightInfo(String label, String value) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(28), dp(20), dp(28), dp(20));
+        setBackgroundCompat(card, roundedRect(Color.rgb(42, 92, 151), dp(14)));
+
+        TextView heading = text(label, 18, Color.WHITE);
+        card.addView(heading);
+
+        TextView detail = text(value, 30, Color.WHITE);
+        detail.setTypeface(Typeface.DEFAULT_BOLD);
+        detail.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams detailParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        detailParams.topMargin = dp(10);
+        card.addView(detail, detailParams);
+
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        cardParams.bottomMargin = dp(14);
+        content.addView(card, cardParams);
+    }
+
     protected EditText addInput(String hint) {
         EditText input = new EditText(this);
         input.setHint(hint);

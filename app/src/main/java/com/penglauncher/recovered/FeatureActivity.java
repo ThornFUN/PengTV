@@ -113,7 +113,7 @@ public final class FeatureActivity extends BasePageActivity {
             return;
         }
         showPage("手机上传壁纸", "离开此页面后，上传服务将自动关闭。");
-        addInfo("手机连接同一局域网后，用浏览器访问：\n" + uploadAddresses());
+        addHighlightInfo("请在手机浏览器中打开以下局域网地址", uploadAddresses());
         addInfo("此服务不设密码，请仅在可信局域网内短暂使用。图片最大 8MB。");
         addAction("关闭上传服务", "停止服务并返回桌面", new View.OnClickListener() {
             @Override
