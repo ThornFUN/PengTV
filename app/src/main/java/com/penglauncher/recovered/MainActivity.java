@@ -307,6 +307,14 @@ public final class MainActivity extends BasePageActivity {
             }
             row.addView(card, gridParams());
         }
+        if (row != null) {
+            int emptySlots = (COLUMN_COUNT - availableApps.size() % COLUMN_COUNT) % COLUMN_COUNT;
+            for (int index = 0; index < emptySlots; index++) {
+                View spacer = new View(this);
+                spacer.setVisibility(View.INVISIBLE);
+                row.addView(spacer, gridParams());
+            }
+        }
     }
 
     private View createAppCard(final AppChoice app, final int index) {
