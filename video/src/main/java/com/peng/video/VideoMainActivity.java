@@ -12,6 +12,7 @@ import android.os.Looper;
 import android.util.Xml;
 import android.view.Gravity;
 import android.view.View;
+import android.widget.GridLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -33,11 +34,12 @@ import org.xmlpull.v1.XmlPullParser;
 
 public final class VideoMainActivity extends Activity {
     private static final int MAX_PLAYLIST_CHARACTERS = 2 * 1024 * 1024;
+    private static final int CHANNEL_COLUMN_COUNT = 5;
     private static final Pattern ATTRIBUTE_PATTERN =
             Pattern.compile("([\\w-]+)=\"([^\"]*)\"");
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
-    private LinearLayout channelList;
+    private GridLayout channelList;
     private TextView status;
     private View firstChannel;
     private boolean initialLoad = true;
@@ -84,8 +86,8 @@ public final class VideoMainActivity extends Activity {
 
         ScrollView scroll = new ScrollView(this);
         scroll.setClipToPadding(false);
-        channelList = new LinearLayout(this);
-        channelList.setOrientation(LinearLayout.VERTICAL);
+        channelList = new GridLayout(this);
+        channelList.setColumnCount(CHANNEL_COLUMN_COUNT);
         channelList.setPadding(0, dp(14), 0, dp(18));
         scroll.addView(channelList);
         root.addView(scroll, new LinearLayout.LayoutParams(
@@ -174,10 +176,10 @@ public final class VideoMainActivity extends Activity {
                     startPlayback(channelIndex);
                 }
             });
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    programme == null ? dp(64) : dp(80));
-            params.bottomMargin = dp(10);
+            GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+            params.width = dp(340);
+            params.height = programme == null ? dp(72) : dp(88);
+            params.setMargins(0, 0, dp(14), dp(14));
             channelList.addView(row, params);
             if (index == 0) {
                 firstChannel = row;
