@@ -197,8 +197,10 @@ public final class MainActivity extends BasePageActivity {
                 && currentPage == 0
                 && settingsButton != null
                 && settingsButton.hasFocus()) {
-            settingsButton.setVisibility(View.GONE);
-            focusHomeCard(lastHomeFocusIndex);
+            if (event.getAction() == KeyEvent.ACTION_UP) {
+                hideSettingsButton();
+                focusHomeCard(lastHomeFocusIndex);
+            }
             return true;
         }
         if ((event.getAction() == KeyEvent.ACTION_DOWN || event.getAction() == KeyEvent.ACTION_UP)
