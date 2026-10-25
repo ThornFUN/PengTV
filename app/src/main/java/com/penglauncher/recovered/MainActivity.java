@@ -146,6 +146,19 @@ public final class MainActivity extends BasePageActivity {
         }
     }
 
+    private void showSettingsButton() {
+        if (settingsButton == null) {
+            return;
+        }
+        settingsButton.setVisibility(View.VISIBLE);
+        settingsButton.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                settingsButton.requestFocus();
+            }
+        }, 100L);
+    }
+
     @Override
     protected void onPause() {
         clockHandler.removeCallbacks(updateClock);
@@ -174,14 +187,18 @@ public final class MainActivity extends BasePageActivity {
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if ((event.getAction() == KeyEvent.ACTION_DOWN || event.getAction() == KeyEvent.ACTION_UP)
+                && event.getKeyCode() == KeyEvent.KEYCODE_DPAD_DOWN
+                && currentPage == 0
+                && settingsButton != null
+                && settingsButton.hasFocus()) {
+            settingsButton.setVisibility(View.GONE);
+            focusHomeCard(lastHomeFocusIndex);
+            return true;
+        }
+        if ((event.getAction() == KeyEvent.ACTION_DOWN || event.getAction() == KeyEvent.ACTION_UP)
                 && event.getKeyCode() == KeyEvent.KEYCODE_DPAD_UP
                 && currentPage == 0) {
-            settingsButton.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    settingsButton.requestFocus();
-                }
-            }, 100L);
+            showSettingsButton();
             return true;
         }
         return super.dispatchKeyEvent(event);
@@ -208,6 +225,12 @@ public final class MainActivity extends BasePageActivity {
         setContentView(screen);
         applyHomeWallpaper();
         refreshCards();
+        pageSwitcher.post(new Runnable() {
+            @Override
+            public void run() {
+                focusHomeCard(0);
+            }
+        });
     }
 
     private void applyHomeWallpaper() {
@@ -322,14 +345,48 @@ public final class MainActivity extends BasePageActivity {
         settingsButton.setPadding(dp(14), dp(14), dp(14), dp(14));
         settingsButton.setClickable(true);
         setBackgroundCompat(settingsButton, interactiveBackground());
-        applyTvFocusFeedback(settingsButton);
+        settingsButton.setFocusable(true);
+        settingsButton.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(final View view, boolean focused) {
+                view.animate().cancel();
+                view.animate()
+                        .scaleX(focused ? 1.02f : 1.0f)
+                        .scaleY(focused ? 1.02f : 1.0f)
+                        .setDuration(140)
+                        .start();
+                if (!focused) {
+                    view.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (!view.hasFocus()) {
+                                view.setVisibility(View.GONE);
+                            }
+                        }
+                    });
+                }
+            }
+        });
         settingsButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 FeatureActivity.open(MainActivity.this, FeatureActivity.SETTINGS);
             }
         });
+        settingsButton.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View view, int keyCode, KeyEvent event) {
+                if ((event.getAction() == KeyEvent.ACTION_DOWN
+                        || event.getAction() == KeyEvent.ACTION_UP)
+                        && keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    focusHomeCard(lastHomeFocusIndex);
+                    return true;
+                }
+                return false;
+            }
+        });
         header.addView(settingsButton, new LinearLayout.LayoutParams(dp(64), dp(52)));
+        settingsButton.setVisibility(View.GONE);
         return header;
     }
 
