@@ -13,7 +13,12 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Rect;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.net.Uri;
@@ -21,6 +26,7 @@ import android.os.Bundle;
 import android.os.Build;
 import android.os.Handler;
 import android.provider.Settings;
+import android.util.LruCache;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -51,6 +57,8 @@ public final class MainActivity extends BasePageActivity {
     private static final int DESKTOP_CARD_COUNT = 10;
     private static final int MAX_RELOAD_ATTEMPTS = 10;
     private static final long RELOAD_DELAY_MILLIS = 1000L;
+    private static final int ICON_CANVAS_SIZE_DP = 96;
+    private static final int ICON_CONTENT_SIZE_DP = 66;
     private static final String CARD_STATE_AUTO = "auto";
     private static final String CARD_STATE_USER = "user";
     private static final String CARD_STATE_EMPTY = "empty";
@@ -64,6 +72,13 @@ public final class MainActivity extends BasePageActivity {
     private ImageView homeBackground;
     private int currentPage;
     private List<AppChoice> availableApps;
+    private final LruCache<String, Bitmap> normalizedIconCache =
+            new LruCache<String, Bitmap>(1536 * 1024) {
+                @Override
+                protected int sizeOf(String key, Bitmap bitmap) {
+                    return bitmap.getByteCount();
+                }
+            };
     private final Handler clockHandler = new Handler();
     private TextView timeView;
     private TextView dateView;
@@ -82,6 +97,7 @@ public final class MainActivity extends BasePageActivity {
     private final BroadcastReceiver packageChangedReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+            normalizedIconCache.evictAll();
             refreshAvailableApps(true);
         }
     };
@@ -332,9 +348,7 @@ public final class MainActivity extends BasePageActivity {
 
     private View createAppCard(final AppChoice app, final int index) {
         LinearLayout card = createCardContainer();
-        ImageView icon = new ImageView(this);
-        icon.setImageDrawable(app.resolveInfo.loadIcon(getPackageManager()));
-        icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        ImageView icon = createAppIcon(app);
         card.addView(icon, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1.0f));
 
@@ -376,9 +390,7 @@ public final class MainActivity extends BasePageActivity {
 
     private View createAllAppsCard(final AppChoice app, final int index) {
         LinearLayout card = createCardContainer();
-        ImageView icon = new ImageView(this);
-        icon.setImageDrawable(app.resolveInfo.loadIcon(getPackageManager()));
-        icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        ImageView icon = createAppIcon(app);
         card.addView(icon, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1.0f));
         TextView title = new TextView(this);
@@ -413,6 +425,84 @@ public final class MainActivity extends BasePageActivity {
             }
         });
         return card;
+    }
+
+    private ImageView createAppIcon(AppChoice app) {
+        ImageView icon = new ImageView(this);
+        Bitmap normalizedIcon = normalizedIcon(app);
+        if (normalizedIcon == null) {
+            icon.setImageDrawable(app.resolveInfo.loadIcon(getPackageManager()));
+            icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        } else {
+            icon.setImageBitmap(normalizedIcon);
+            icon.setScaleType(ImageView.ScaleType.CENTER);
+        }
+        return icon;
+    }
+
+    private Bitmap normalizedIcon(AppChoice app) {
+        String cacheKey = app.resolveInfo.activityInfo.packageName + "/"
+                + app.resolveInfo.activityInfo.name;
+        Bitmap cachedIcon = normalizedIconCache.get(cacheKey);
+        if (cachedIcon != null) {
+            return cachedIcon;
+        }
+
+        Drawable drawable = app.resolveInfo.loadIcon(getPackageManager());
+        if (drawable == null) {
+            return null;
+        }
+        int canvasSize = dp(ICON_CANVAS_SIZE_DP);
+        Bitmap source = Bitmap.createBitmap(canvasSize, canvasSize, Bitmap.Config.ARGB_8888);
+        Canvas sourceCanvas = new Canvas(source);
+        Rect originalBounds = drawable.copyBounds();
+        drawable.setBounds(0, 0, canvasSize, canvasSize);
+        drawable.draw(sourceCanvas);
+        drawable.setBounds(originalBounds);
+
+        Rect visibleBounds = visibleBounds(source);
+        if (visibleBounds == null) {
+            source.recycle();
+            return null;
+        }
+
+        Bitmap result = Bitmap.createBitmap(canvasSize, canvasSize, Bitmap.Config.ARGB_8888);
+        int contentSize = dp(ICON_CONTENT_SIZE_DP);
+        float scale = Math.min((float) contentSize / visibleBounds.width(),
+                (float) contentSize / visibleBounds.height());
+        int width = Math.max(1, Math.round(visibleBounds.width() * scale));
+        int height = Math.max(1, Math.round(visibleBounds.height() * scale));
+        int left = (canvasSize - width) / 2;
+        int top = (canvasSize - height) / 2;
+        new Canvas(result).drawBitmap(source, visibleBounds,
+                new Rect(left, top, left + width, top + height),
+                new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG));
+        source.recycle();
+        normalizedIconCache.put(cacheKey, result);
+        return result;
+    }
+
+    private Rect visibleBounds(Bitmap bitmap) {
+        int width = bitmap.getWidth();
+        int height = bitmap.getHeight();
+        int[] pixels = new int[width * height];
+        bitmap.getPixels(pixels, 0, width, 0, 0, width, height);
+        int left = width;
+        int top = height;
+        int right = -1;
+        int bottom = -1;
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                if ((pixels[y * width + x] >>> 24) == 0) {
+                    continue;
+                }
+                left = Math.min(left, x);
+                top = Math.min(top, y);
+                right = Math.max(right, x);
+                bottom = Math.max(bottom, y);
+            }
+        }
+        return right < left || bottom < top ? null : new Rect(left, top, right + 1, bottom + 1);
     }
 
     private View createAddCard(final int index) {
