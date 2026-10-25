@@ -58,6 +58,7 @@ public final class VideoMainActivity extends Activity {
     private final Map<String, List<Integer>> categoryChannels = new LinkedHashMap<>();
     private List<Integer> visibleChannelIndexes = Collections.emptyList();
     private String selectedCategory;
+    private int focusedChannelIndex = -1;
     private boolean initialLoad = true;
 
     @Override
@@ -81,6 +82,16 @@ public final class VideoMainActivity extends Activity {
             return;
         }
         super.onBackPressed();
+    }
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_MENU && selectedCategory != null
+                && focusedChannelIndex >= 0) {
+            chooseLine(focusedChannelIndex);
+            return true;
+        }
+        return super.onKeyUp(keyCode, event);
     }
 
     private void buildScreen() {
@@ -215,6 +226,7 @@ public final class VideoMainActivity extends Activity {
     private void showCategoryList() {
         selectedCategory = null;
         visibleChannelIndexes = Collections.emptyList();
+        focusedChannelIndex = -1;
         channelList.removeAllViews();
         channelScroll.scrollTo(0, 0);
         status.setText("已加载 " + allChannels.size() + " 个频道，请先选择分类"
@@ -286,6 +298,7 @@ public final class VideoMainActivity extends Activity {
 
     private void showCategoryChannels(String category) {
         selectedCategory = category;
+        focusedChannelIndex = -1;
         List<Integer> indexes = categoryChannels.get(category);
         visibleChannelIndexes = indexes == null ? Collections.<Integer>emptyList() : indexes;
         showChannelPage(0);
@@ -325,6 +338,14 @@ public final class VideoMainActivity extends Activity {
                 @Override
                 public void onClick(View view) {
                     startPlayback(channelIndex);
+                }
+            });
+            row.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+                @Override
+                public void onFocusChange(View view, boolean focused) {
+                    if (focused) {
+                        focusedChannelIndex = channelIndex;
+                    }
                 }
             });
             row.setOnKeyListener(new View.OnKeyListener() {
@@ -402,6 +423,13 @@ public final class VideoMainActivity extends Activity {
         intent.putExtra(PlayerActivity.EXTRA_NAME, channel.name);
         intent.putExtra(PlayerActivity.EXTRA_URL, channel.url);
         startActivity(intent);
+    }
+
+    private void chooseLine(int index) {
+        Channel channel = PlaybackQueue.channelAt(index);
+        if (channel != null) {
+            LineSelectionActivity.open(this, channel.name, channel.urls());
+        }
     }
 
     private boolean moveChannelFocus(int index) {

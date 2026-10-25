@@ -21,6 +21,7 @@ import com.google.android.exoplayer2.PlaybackException;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.source.BehindLiveWindowException;
 import com.google.android.exoplayer2.ui.PlayerView;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -227,7 +228,7 @@ public final class PlayerActivity extends Activity {
         retryHandler.removeCallbacks(retryPlayback);
         retryCount = 0;
         currentIndex = channel == null ? 0 : index;
-        currentUrls = channel == null ? Collections.singletonList(url) : channel.urls();
+        currentUrls = channel == null ? Collections.singletonList(url) : preferredUrls(channel);
         currentUrlIndex = 0;
         currentUrl = currentUrls.get(currentUrlIndex);
         title.setText(name == null ? "PENG影视" : name);
@@ -235,6 +236,15 @@ public final class PlayerActivity extends Activity {
         showChannelOverlay();
         VideoPreferences.saveLastChannelUrl(this, url);
         prepareCurrentChannel();
+    }
+
+    private List<String> preferredUrls(VideoMainActivity.Channel channel) {
+        List<String> urls = new ArrayList<>(channel.urls());
+        String preferredUrl = VideoPreferences.defaultLineUrl(this, channel.name);
+        if (urls.remove(preferredUrl)) {
+            urls.add(0, preferredUrl);
+        }
+        return urls;
     }
 
     private boolean playFallbackUrl() {
