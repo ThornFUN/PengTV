@@ -34,7 +34,7 @@ import org.xmlpull.v1.XmlPullParser;
 
 public final class VideoMainActivity extends Activity {
     private static final int MAX_PLAYLIST_CHARACTERS = 2 * 1024 * 1024;
-    private static final int CHANNEL_COLUMN_COUNT = 5;
+    private static final int CHANNEL_COLUMN_COUNT = 3;
     private static final Pattern ATTRIBUTE_PATTERN =
             Pattern.compile("([\\w-]+)=\"([^\"]*)\"");
 
@@ -177,9 +177,11 @@ public final class VideoMainActivity extends Activity {
                 }
             });
             GridLayout.LayoutParams params = new GridLayout.LayoutParams();
-            params.width = dp(340);
+            params.width = channelCardWidth();
             params.height = programme == null ? dp(72) : dp(88);
-            params.setMargins(0, 0, dp(14), dp(14));
+            params.setMargins(0, 0,
+                    channelIndex % CHANNEL_COLUMN_COUNT == CHANNEL_COLUMN_COUNT - 1 ? 0 : dp(14),
+                    dp(14));
             channelList.addView(row, params);
             if (index == 0) {
                 firstChannel = row;
@@ -359,6 +361,13 @@ public final class VideoMainActivity extends Activity {
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private int channelCardWidth() {
+        int horizontalPadding = dp(34) * 2;
+        int horizontalSpacing = dp(14) * (CHANNEL_COLUMN_COUNT - 1);
+        return (getResources().getDisplayMetrics().widthPixels - horizontalPadding - horizontalSpacing)
+                / CHANNEL_COLUMN_COUNT;
     }
 
     static final class Channel {
