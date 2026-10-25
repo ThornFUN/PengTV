@@ -21,4 +21,8 @@ final class PlaybackQueue {
     static synchronized int size() {
         return channels.size();
     }
+
+    static synchronized List<VideoMainActivity.Channel> channels() {
+        return new ArrayList<>(channels);
+    }
 }
