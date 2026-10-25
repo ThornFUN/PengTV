@@ -2,6 +2,7 @@ package com.penglauncher.recovered;
 
 import android.content.Context;
 import android.content.Intent;
+import android.app.AlertDialog;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -74,6 +75,12 @@ public final class FeatureActivity extends BasePageActivity {
                 FeatureActivity.open(FeatureActivity.this, WALLPAPER_UPLOAD);
             }
         });
+        addAction("重置首页壁纸", "恢复内置默认背景图", new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                confirmWallpaperReset();
+            }
+        });
         addAction("关于 PENG 桌面", "应用背景、目的与作者", new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -139,6 +146,32 @@ public final class FeatureActivity extends BasePageActivity {
         } catch (IOException | SecurityException exception) {
             Toast.makeText(this, "保存壁纸失败", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void confirmWallpaperReset() {
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("重置首页壁纸")
+                .setMessage("将删除当前自定义壁纸并恢复默认背景图。")
+                .setNegativeButton("取消", null)
+                .setPositiveButton("重置", (ignoredDialog, which) -> resetWallpaper())
+                .create();
+        applyDialogFocusStyle(dialog);
+        dialog.show();
+    }
+
+    private void resetWallpaper() {
+        File wallpaper = new File(getFilesDir(), "home_wallpaper");
+        File temporary = new File(getFilesDir(), "home_wallpaper.tmp");
+        if ((wallpaper.exists() && !wallpaper.delete())
+                || (temporary.exists() && !temporary.delete())) {
+            Toast.makeText(this, "重置壁纸失败", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        getSharedPreferences(WALLPAPER_PREFERENCES, MODE_PRIVATE)
+                .edit()
+                .remove(WALLPAPER_PATH_KEY)
+                .apply();
+        Toast.makeText(this, "已恢复默认壁纸", Toast.LENGTH_SHORT).show();
     }
 
     private void saveWallpaper(InputStream source) throws IOException {
