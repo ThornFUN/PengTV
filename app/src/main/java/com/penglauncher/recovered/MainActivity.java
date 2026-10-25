@@ -305,7 +305,7 @@ public final class MainActivity extends BasePageActivity {
             if (index == 0) {
                 firstAllAppsCard = card;
             }
-            row.addView(card, allAppsGridParams());
+            row.addView(card, gridParams());
         }
     }
 
@@ -536,13 +536,6 @@ public final class MainActivity extends BasePageActivity {
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 0, cardHeight(), 1.0f);
         params.setMargins(dp(8), dp(8), dp(8), dp(8));
-        return params;
-    }
-
-    private LinearLayout.LayoutParams allAppsGridParams() {
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                0, Math.max(dp(68), Math.round(cardHeight() * 0.58f)), 1.0f);
-        params.setMargins(dp(7), dp(7), dp(7), dp(7));
         return params;
     }
 
