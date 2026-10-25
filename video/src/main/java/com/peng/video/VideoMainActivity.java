@@ -127,7 +127,8 @@ public final class VideoMainActivity extends Activity {
             showEmpty("直播源中没有可播放频道。");
             return;
         }
-        status.setText("已加载 " + channels.size() + " 个频道（含 2 个默认公开频道）"
+        status.setText("已加载 " + channels.size() + " 个频道（含 "
+                + DefaultChannels.create().size() + " 个默认公开频道）"
                 + (userSourceFailed ? "；追加播放列表加载失败，仍可播放默认频道。"
                 : guide.failed ? "；节目单加载失败，仍可播放频道。"
                 : guide.programmes.isEmpty() ? "" : "，已显示节目单预览"));

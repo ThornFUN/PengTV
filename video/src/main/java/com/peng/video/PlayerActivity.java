@@ -6,16 +6,20 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.KeyEvent;
-import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.widget.VideoView;
+import com.google.android.exoplayer2.ExoPlayer;
+import com.google.android.exoplayer2.MediaItem;
+import com.google.android.exoplayer2.PlaybackException;
+import com.google.android.exoplayer2.Player;
+import com.google.android.exoplayer2.source.BehindLiveWindowException;
+import com.google.android.exoplayer2.ui.PlayerView;
 
 public final class PlayerActivity extends Activity {
     public static final String EXTRA_NAME = "name";
     public static final String EXTRA_URL = "url";
-    private VideoView player;
+    private ExoPlayer player;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,8 +34,8 @@ public final class PlayerActivity extends Activity {
 
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
-        player = new VideoView(this);
-        root.addView(player, new FrameLayout.LayoutParams(
+        PlayerView playerView = new PlayerView(this);
+        root.addView(playerView, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
         TextView title = new TextView(this);
         title.setText(name == null ? "PENG影视" : name);
@@ -45,15 +49,23 @@ public final class PlayerActivity extends Activity {
         root.addView(title, titleParams);
         setContentView(root);
 
-        player.setOnPreparedListener(mediaPlayer -> player.start());
-        player.setOnErrorListener((mediaPlayer, what, extra) -> {
-            Toast.makeText(PlayerActivity.this, "播放失败，请检查直播源", Toast.LENGTH_SHORT).show();
-            finish();
-            return true;
+        player = new ExoPlayer.Builder(this).build();
+        playerView.setPlayer(player);
+        player.addListener(new Player.Listener() {
+            @Override
+            public void onPlayerError(PlaybackException error) {
+                if (error.getCause() instanceof BehindLiveWindowException) {
+                    player.seekToDefaultPosition();
+                    player.prepare();
+                    player.play();
+                    return;
+                }
+                Toast.makeText(PlayerActivity.this, "播放失败，请检查直播源", Toast.LENGTH_SHORT).show();
+            }
         });
-        player.setVideoURI(Uri.parse(url));
-        player.requestFocus();
-        player.start();
+        player.setMediaItem(MediaItem.fromUri(Uri.parse(url)));
+        player.prepare();
+        player.play();
     }
 
     @Override
@@ -62,7 +74,7 @@ public final class PlayerActivity extends Activity {
             if (player.isPlaying()) {
                 player.pause();
             } else {
-                player.start();
+                player.play();
             }
             return true;
         }
@@ -71,8 +83,14 @@ public final class PlayerActivity extends Activity {
 
     @Override
     protected void onStop() {
-        player.stopPlayback();
+        player.pause();
         super.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
+        player.release();
+        super.onDestroy();
     }
 
     private int dp(int value) {
