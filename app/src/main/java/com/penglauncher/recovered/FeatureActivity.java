@@ -16,6 +16,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.BindException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -33,6 +34,7 @@ public final class FeatureActivity extends BasePageActivity {
     public static final String WALLPAPER_PREFERENCES = "home_wallpaper";
     public static final String WALLPAPER_PATH_KEY = "path";
     private static final int SELECT_WALLPAPER_REQUEST = 100;
+    private static final int WALLPAPER_UPLOAD_PORT = 8080;
     private static final long MAX_WALLPAPER_BYTES = 8L * 1024L * 1024L;
     private static final int MAX_REQUEST_HEADER_BYTES = 8192;
     private WallpaperUploadServer uploadServer;
@@ -101,6 +103,10 @@ public final class FeatureActivity extends BasePageActivity {
         try {
             uploadServer = new WallpaperUploadServer();
             uploadServer.start();
+        } catch (BindException exception) {
+            Toast.makeText(this, "端口 8080 已被占用，无法启动上传服务", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
         } catch (IOException exception) {
             Toast.makeText(this, "无法启动上传服务", Toast.LENGTH_SHORT).show();
             finish();
@@ -266,7 +272,7 @@ public final class FeatureActivity extends BasePageActivity {
         private Thread worker;
 
         private void start() throws IOException {
-            serverSocket = new ServerSocket(0);
+            serverSocket = new ServerSocket(WALLPAPER_UPLOAD_PORT);
             running = true;
             worker = new Thread(new Runnable() {
                 @Override
