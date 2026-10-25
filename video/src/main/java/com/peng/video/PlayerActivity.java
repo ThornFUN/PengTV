@@ -236,7 +236,7 @@ public final class PlayerActivity extends Activity {
     }
 
     private void appendChannelDigit(int digit) {
-        if (channelInput.length() == 3) {
+        if (channelInput.length() >= channelNumberDigitLimit()) {
             channelInput.setLength(0);
         }
         channelInput.append(digit);
@@ -245,6 +245,10 @@ public final class PlayerActivity extends Activity {
         showChannelOverlay();
         channelInputHandler.removeCallbacks(submitChannelInput);
         channelInputHandler.postDelayed(submitChannelInput, 1500);
+    }
+
+    private int channelNumberDigitLimit() {
+        return Math.max(3, String.valueOf(Math.max(1, PlaybackQueue.size())).length());
     }
 
     private void submitChannelInput() {

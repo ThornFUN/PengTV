@@ -26,6 +26,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -38,6 +39,7 @@ public final class VideoMainActivity extends Activity {
     public static final String EXTRA_CHANNEL_LIST_ONLY = "channel_list_only";
     private static final int MAX_PLAYLIST_CHARACTERS = 2 * 1024 * 1024;
     private static final int CHANNEL_COLUMN_COUNT = 3;
+    private static final int CHANNELS_PER_PAGE = 60;
     private static final Pattern ATTRIBUTE_PATTERN =
             Pattern.compile("([\\w-]+)=\"([^\"]*)\"");
 
@@ -47,6 +49,11 @@ public final class VideoMainActivity extends Activity {
     private TextView status;
     private View firstChannel;
     private View sourceSettings;
+    private List<Channel> allChannels = Collections.emptyList();
+    private GuideResult channelGuide;
+    private int currentPage;
+    private int defaultChannelCount;
+    private boolean userSourceFailed;
     private boolean initialLoad = true;
 
     @Override
@@ -159,16 +166,14 @@ public final class VideoMainActivity extends Activity {
 
     private void showChannels(List<Channel> channels, GuideResult guide, boolean userSourceFailed,
             int defaultChannelCount, boolean autoPlayLastChannel) {
-        channelList.removeAllViews();
         if (channels.isEmpty()) {
             showEmpty("直播源中没有可播放频道。");
             return;
         }
-        status.setText("已加载 " + channels.size() + " 个频道（含 "
-                + defaultChannelCount + " 个默认频道）"
-                + (userSourceFailed ? "；追加播放列表加载失败，仍可播放默认频道。"
-                : guide.failed ? "；节目单加载失败，仍可播放频道。"
-                : guide.programmes.isEmpty() ? "" : "，已显示节目单预览"));
+        allChannels = channels;
+        channelGuide = guide;
+        this.userSourceFailed = userSourceFailed;
+        this.defaultChannelCount = defaultChannelCount;
         PlaybackQueue.setChannels(channels);
         if (autoPlayLastChannel) {
             int lastChannelIndex = findChannelIndex(VideoPreferences.lastChannelUrl(this), channels);
@@ -177,12 +182,30 @@ public final class VideoMainActivity extends Activity {
                 return;
             }
         }
-        for (int index = 0; index < channels.size(); index++) {
-            final Channel channel = channels.get(index);
+        showChannelPage(0);
+    }
+
+    private void showChannelPage(int page) {
+        int pageCount = (allChannels.size() + CHANNELS_PER_PAGE - 1) / CHANNELS_PER_PAGE;
+        if (page < 0 || page >= pageCount) {
+            return;
+        }
+        currentPage = page;
+        channelList.removeAllViews();
+        firstChannel = null;
+        int startIndex = page * CHANNELS_PER_PAGE;
+        int endIndex = Math.min(startIndex + CHANNELS_PER_PAGE, allChannels.size());
+        status.setText("已加载 " + allChannels.size() + " 个频道（含 "
+                + defaultChannelCount + " 个默认频道），第 " + (page + 1) + "/" + pageCount + " 页"
+                + (userSourceFailed ? "；追加播放列表加载失败，仍可播放默认频道。"
+                : channelGuide.failed ? "；节目单加载失败，仍可播放频道。"
+                : channelGuide.programmes.isEmpty() ? "" : "，已显示节目单预览"));
+        for (int index = startIndex; index < endIndex; index++) {
+            final Channel channel = allChannels.get(index);
             final int channelIndex = index;
             String channelLabel = String.format(Locale.US, "%03d  %s", index + 1, channel.name);
             TextView row = action(channelLabel);
-            String programme = guide.programmes.get(channel.id);
+            String programme = channelGuide.programmes.get(channel.id);
             if (programme != null && programme.length() > 0) {
                 row.setText(channelLabel + "\n" + programme);
                 row.setTextSize(16);
@@ -237,7 +260,7 @@ public final class VideoMainActivity extends Activity {
                     channelIndex % CHANNEL_COLUMN_COUNT == CHANNEL_COLUMN_COUNT - 1 ? 0 : dp(14),
                     dp(14));
             channelList.addView(row, params);
-            if (index == 0) {
+            if (index == startIndex) {
                 firstChannel = row;
             }
         }
@@ -272,19 +295,39 @@ public final class VideoMainActivity extends Activity {
     }
 
     private boolean moveChannelFocus(int index) {
-        if (index < 0 || index >= channelList.getChildCount()) {
+        if (index < 0 || index >= allChannels.size()) {
             return true;
         }
-        View target = channelList.getChildAt(index);
+        int targetPage = index / CHANNELS_PER_PAGE;
+        if (targetPage != currentPage) {
+            showChannelPage(targetPage);
+            final int targetIndex = index;
+            channelList.post(new Runnable() {
+                @Override
+                public void run() {
+                    focusChannel(targetIndex);
+                }
+            });
+            return true;
+        }
+        focusChannel(index);
+        return true;
+    }
+
+    private void focusChannel(int index) {
+        View target = channelList.getChildAt(index - currentPage * CHANNELS_PER_PAGE);
+        if (target == null) {
+            return;
+        }
         target.requestFocus();
         Rect targetBounds = new Rect();
         target.getDrawingRect(targetBounds);
         targetBounds.offset(target.getLeft(), target.getTop());
         channelScroll.requestChildRectangleOnScreen(channelList, targetBounds, true);
-        return true;
     }
 
     private void showEmpty(String message) {
+        allChannels = Collections.emptyList();
         channelList.removeAllViews();
         status.setText(message);
         TextView configure = action("配置直播源");
