@@ -48,6 +48,7 @@ public final class MainActivity extends BasePageActivity {
     private static final int DESKTOP_CARD_COUNT = 10;
     private LinearLayout cardGrid;
     private LinearLayout allAppsGrid;
+    private ScrollView allAppsScroll;
     private ViewFlipper pageSwitcher;
     private View firstHomeCard;
     private View firstAllAppsCard;
@@ -132,9 +133,7 @@ public final class MainActivity extends BasePageActivity {
                     if (currentPage == 0) {
                         focusHomeCard(lastHomeFocusIndex);
                     } else if (currentPage == 1) {
-                        if (firstAllAppsCard != null) {
-                            firstAllAppsCard.requestFocus();
-                        }
+                        focusFirstAllAppsCard();
                     }
                 }
             });
@@ -221,7 +220,7 @@ public final class MainActivity extends BasePageActivity {
     }
 
     private View createAllAppsPage() {
-        ScrollView allAppsScroll = new ScrollView(this);
+        allAppsScroll = new ScrollView(this);
         allAppsScroll.setFillViewport(true);
         allowFocusOverflow(allAppsScroll);
         allAppsScroll.setPadding(dp(34), dp(20), dp(34), dp(30));
@@ -452,11 +451,18 @@ public final class MainActivity extends BasePageActivity {
         pageSwitcher.post(new Runnable() {
             @Override
             public void run() {
-                if (firstAllAppsCard != null) {
-                    firstAllAppsCard.requestFocus();
-                }
+                focusFirstAllAppsCard();
             }
         });
+    }
+
+    private void focusFirstAllAppsCard() {
+        if (firstAllAppsCard != null) {
+            firstAllAppsCard.requestFocus();
+        }
+        if (allAppsScroll != null) {
+            allAppsScroll.scrollTo(0, 0);
+        }
     }
 
     private View getHomeCard(int index) {
