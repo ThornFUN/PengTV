@@ -10,6 +10,7 @@ import android.os.Looper;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -28,6 +29,7 @@ public final class PlayerActivity extends Activity {
     private ExoPlayer player;
     private final Handler overlayHandler = new Handler(Looper.getMainLooper());
     private final Handler channelInputHandler = new Handler(Looper.getMainLooper());
+    private final Handler retryHandler = new Handler(Looper.getMainLooper());
     private final Runnable hideOverlay = new Runnable() {
         @Override
         public void run() {
@@ -49,10 +51,19 @@ public final class PlayerActivity extends Activity {
             submitChannelInput();
         }
     };
+    private final Runnable retryPlayback = new Runnable() {
+        @Override
+        public void run() {
+            prepareCurrentChannel();
+        }
+    };
+    private String currentUrl;
+    private int retryCount;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         fallbackName = getIntent().getStringExtra(EXTRA_NAME);
         fallbackUrl = getIntent().getStringExtra(EXTRA_URL);
         if (!VideoPreferences.isHttpUrl(fallbackUrl)) {
@@ -102,19 +113,25 @@ public final class PlayerActivity extends Activity {
             @Override
             public void onPlaybackStateChanged(int playbackState) {
                 if (playbackState == Player.STATE_READY) {
+                    retryCount = 0;
                     loadingOverlay.setVisibility(View.GONE);
                 }
             }
 
             @Override
             public void onPlayerError(PlaybackException error) {
-                if (error.getCause() instanceof BehindLiveWindowException) {
-                    player.seekToDefaultPosition();
-                    player.prepare();
-                    player.play();
+                if (retryCount < 3) {
+                    retryCount++;
+                    loadingOverlay.setText("播放中断，正在重试（" + retryCount + "/3）...");
+                    loadingOverlay.setVisibility(View.VISIBLE);
+                    retryHandler.removeCallbacks(retryPlayback);
+                    retryHandler.postDelayed(retryPlayback,
+                            error.getCause() instanceof BehindLiveWindowException ? 0 : 2000);
                     return;
                 }
-                Toast.makeText(PlayerActivity.this, "播放失败，请检查直播源", Toast.LENGTH_SHORT).show();
+                loadingOverlay.setText("播放失败，请切换频道或稍后重试");
+                loadingOverlay.setVisibility(View.VISIBLE);
+                Toast.makeText(PlayerActivity.this, "播放失败，请切换频道或稍后重试", Toast.LENGTH_SHORT).show();
             }
         });
         playChannel(getIntent().getIntExtra(EXTRA_INDEX, 0));
@@ -171,6 +188,7 @@ public final class PlayerActivity extends Activity {
     protected void onStop() {
         overlayHandler.removeCallbacks(hideOverlay);
         channelInputHandler.removeCallbacks(submitChannelInput);
+        retryHandler.removeCallbacks(retryPlayback);
         if (player != null) {
             player.pause();
         }
@@ -195,13 +213,24 @@ public final class PlayerActivity extends Activity {
         }
         channelInput.setLength(0);
         channelInputHandler.removeCallbacks(submitChannelInput);
+        retryHandler.removeCallbacks(retryPlayback);
+        retryCount = 0;
         currentIndex = channel == null ? 0 : index;
+        currentUrl = url;
         title.setText(name == null ? "PENG影视" : name);
         channelNumber.setText(String.format(Locale.US, "%03d", currentIndex + 1));
         showChannelOverlay();
         VideoPreferences.saveLastChannelUrl(this, url);
+        prepareCurrentChannel();
+    }
+
+    private void prepareCurrentChannel() {
+        if (!VideoPreferences.isHttpUrl(currentUrl)) {
+            return;
+        }
+        loadingOverlay.setText("正在加载...");
         loadingOverlay.setVisibility(View.VISIBLE);
-        player.setMediaItem(MediaItem.fromUri(Uri.parse(url)));
+        player.setMediaItem(MediaItem.fromUri(Uri.parse(currentUrl)));
         player.prepare();
         player.play();
     }
