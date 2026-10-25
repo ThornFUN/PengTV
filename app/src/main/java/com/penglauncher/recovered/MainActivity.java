@@ -2,9 +2,12 @@ package com.penglauncher.recovered;
 
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -46,6 +49,11 @@ public final class MainActivity extends BasePageActivity {
     private static final int COLUMN_COUNT = 5;
     private static final int INITIAL_CARD_COUNT = 8;
     private static final int DESKTOP_CARD_COUNT = 10;
+    private static final int MAX_RELOAD_ATTEMPTS = 10;
+    private static final long RELOAD_DELAY_MILLIS = 1000L;
+    private static final String CARD_STATE_AUTO = "auto";
+    private static final String CARD_STATE_USER = "user";
+    private static final String CARD_STATE_EMPTY = "empty";
     private LinearLayout cardGrid;
     private LinearLayout allAppsGrid;
     private ScrollView allAppsScroll;
@@ -68,9 +76,15 @@ public final class MainActivity extends BasePageActivity {
             clockHandler.postDelayed(this, 30000L);
         }
     };
-    private static final int MAX_RELOAD_ATTEMPTS = 3;
     private final Handler reloadHandler = new Handler();
     private int reloadAttempts;
+    private boolean packageReceiverRegistered;
+    private final BroadcastReceiver packageChangedReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            refreshAvailableApps(true);
+        }
+    };
     private final Runnable reloadCardsRunnable = new Runnable() {
         @Override
         public void run() {
@@ -78,9 +92,7 @@ public final class MainActivity extends BasePageActivity {
                 return;
             }
             reloadAttempts++;
-            availableApps = loadAvailableApps();
-            refreshCards();
-            scheduleReloadIfMissing();
+            refreshAvailableApps(false);
         }
     };
 
@@ -92,7 +104,8 @@ public final class MainActivity extends BasePageActivity {
             getActionBar().hide();
         }
         availableApps = loadAvailableApps();
-        createDefaultCardsIfNeeded();
+        initializeCardStates();
+        fillAutomaticCards();
         buildHome();
         scheduleReloadIfMissing();
     }
@@ -107,19 +120,20 @@ public final class MainActivity extends BasePageActivity {
     protected void onResume() {
         super.onResume();
         android.util.Log.e("PENG", "== onResume called");
+        registerPackageChangeReceiver();
         clockHandler.removeCallbacks(updateClock);
         clockHandler.post(updateClock);
         if (homeBackground != null) {
-            availableApps = loadAvailableApps();
+            refreshAvailableApps(true);
             applyHomeWallpaper();
-            refreshCards();
-            scheduleReloadIfMissing();
         }
     }
 
     @Override
     protected void onPause() {
         clockHandler.removeCallbacks(updateClock);
+        reloadHandler.removeCallbacks(reloadCardsRunnable);
+        unregisterPackageChangeReceiver();
         super.onPause();
     }
 
@@ -634,21 +648,54 @@ public final class MainActivity extends BasePageActivity {
         }
     }
 
-    private void createDefaultCardsIfNeeded() {
-        if (preferences().getBoolean("cards_initialized", false)) {
+    private void initializeCardStates() {
+        if (preferences().getBoolean("card_state_migrated", false)) {
             return;
         }
-        int count = Math.min(INITIAL_CARD_COUNT, availableApps.size());
-        for (int index = 0; index < count; index++) {
-            saveChoice(index, availableApps.get(index));
+        SharedPreferences.Editor editor = preferences().edit();
+        for (int index = 0; index < DESKTOP_CARD_COUNT; index++) {
+            if (cardState(index) != null) {
+                continue;
+            }
+            if (hasSavedChoice(index)) {
+                editor.putString(cardStateKey(index), CARD_STATE_USER);
+            } else if (index < INITIAL_CARD_COUNT) {
+                editor.putString(cardStateKey(index), CARD_STATE_AUTO);
+            }
         }
-        preferences().edit().putBoolean("cards_initialized", true).apply();
+        editor.putBoolean("card_state_migrated", true);
+        editor.apply();
+    }
+
+    private void fillAutomaticCards() {
+        Set<ComponentName> pinnedComponents = savedComponents();
+        SharedPreferences.Editor editor = preferences().edit();
+        boolean changed = false;
+        for (int index = 0; index < INITIAL_CARD_COUNT; index++) {
+            if (!CARD_STATE_AUTO.equals(cardState(index)) || hasSavedChoice(index)) {
+                continue;
+            }
+            AppChoice candidate = firstUnpinnedApp(pinnedComponents);
+            if (candidate == null) {
+                break;
+            }
+            editor.putString("card_package_" + index, candidate.resolveInfo.activityInfo.packageName);
+            editor.putString("card_activity_" + index, candidate.resolveInfo.activityInfo.name);
+            pinnedComponents.add(new ComponentName(
+                    candidate.resolveInfo.activityInfo.packageName,
+                    candidate.resolveInfo.activityInfo.name));
+            changed = true;
+        }
+        if (changed) {
+            editor.apply();
+        }
     }
 
     private void saveChoice(int index, AppChoice app) {
         SharedPreferences.Editor editor = preferences().edit();
         editor.putString("card_package_" + index, app.resolveInfo.activityInfo.packageName);
         editor.putString("card_activity_" + index, app.resolveInfo.activityInfo.name);
+        editor.putString(cardStateKey(index), CARD_STATE_USER);
         editor.apply();
     }
 
@@ -656,6 +703,7 @@ public final class MainActivity extends BasePageActivity {
         SharedPreferences.Editor editor = preferences().edit();
         editor.remove("card_package_" + index);
         editor.remove("card_activity_" + index);
+        editor.putString(cardStateKey(index), CARD_STATE_EMPTY);
         editor.apply();
         refreshCards();
     }
@@ -705,24 +753,95 @@ public final class MainActivity extends BasePageActivity {
         }
     }
 
-    private boolean containsPackage(String packageName) {
-        for (AppChoice app : availableApps) {
-            if (app.resolveInfo.activityInfo.packageName.equals(packageName)) {
+    private void refreshAvailableApps(boolean resetReloadAttempts) {
+        if (resetReloadAttempts) {
+            reloadAttempts = 0;
+        }
+        availableApps = loadAvailableApps();
+        fillAutomaticCards();
+        if (cardGrid != null) {
+            refreshCards();
+        }
+        scheduleReloadIfMissing();
+    }
+
+    private void scheduleReloadIfMissing() {
+        reloadHandler.removeCallbacks(reloadCardsRunnable);
+        if (reloadAttempts >= MAX_RELOAD_ATTEMPTS || !hasPendingCardRefresh()) {
+            return;
+        }
+        reloadHandler.postDelayed(reloadCardsRunnable, RELOAD_DELAY_MILLIS);
+    }
+
+    private boolean hasPendingCardRefresh() {
+        for (int index = 0; index < INITIAL_CARD_COUNT; index++) {
+            if (CARD_STATE_AUTO.equals(cardState(index)) && !hasSavedChoice(index)) {
+                return true;
+            }
+        }
+        for (int index = 0; index < DESKTOP_CARD_COUNT; index++) {
+            if (hasSavedChoice(index) && choiceAt(index) == null) {
                 return true;
             }
         }
         return false;
     }
 
-    private void scheduleReloadIfMissing() {
+    private Set<ComponentName> savedComponents() {
+        Set<ComponentName> components = new HashSet<>();
         for (int index = 0; index < DESKTOP_CARD_COUNT; index++) {
-            String pkg = preferences().getString("card_package_" + index, null);
-            if (pkg != null && !containsPackage(pkg)) {
-                reloadHandler.removeCallbacks(reloadCardsRunnable);
-                reloadHandler.postDelayed(reloadCardsRunnable, 1000L);
-                return;
+            String packageName = preferences().getString("card_package_" + index, null);
+            String activityName = preferences().getString("card_activity_" + index, null);
+            if (packageName != null && activityName != null) {
+                components.add(new ComponentName(packageName, activityName));
             }
         }
+        return components;
+    }
+
+    private AppChoice firstUnpinnedApp(Set<ComponentName> pinnedComponents) {
+        for (AppChoice app : availableApps) {
+            ComponentName component = new ComponentName(
+                    app.resolveInfo.activityInfo.packageName, app.resolveInfo.activityInfo.name);
+            if (!pinnedComponents.contains(component)) {
+                return app;
+            }
+        }
+        return null;
+    }
+
+    private boolean hasSavedChoice(int index) {
+        return preferences().contains("card_package_" + index)
+                && preferences().contains("card_activity_" + index);
+    }
+
+    private String cardState(int index) {
+        return preferences().getString(cardStateKey(index), null);
+    }
+
+    private String cardStateKey(int index) {
+        return "card_state_" + index;
+    }
+
+    private void registerPackageChangeReceiver() {
+        if (packageReceiverRegistered) {
+            return;
+        }
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(Intent.ACTION_PACKAGE_ADDED);
+        filter.addAction(Intent.ACTION_PACKAGE_CHANGED);
+        filter.addAction(Intent.ACTION_PACKAGE_REMOVED);
+        filter.addDataScheme("package");
+        registerReceiver(packageChangedReceiver, filter);
+        packageReceiverRegistered = true;
+    }
+
+    private void unregisterPackageChangeReceiver() {
+        if (!packageReceiverRegistered) {
+            return;
+        }
+        unregisterReceiver(packageChangedReceiver);
+        packageReceiverRegistered = false;
     }
 
     private SharedPreferences preferences() {
