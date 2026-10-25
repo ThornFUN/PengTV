@@ -46,6 +46,7 @@ public final class VideoMainActivity extends Activity {
     private ScrollView channelScroll;
     private TextView status;
     private View firstChannel;
+    private View sourceSettings;
     private boolean initialLoad = true;
 
     @Override
@@ -73,14 +74,26 @@ public final class VideoMainActivity extends Activity {
         TextView title = text("PENG影视", 30, Color.WHITE);
         header.addView(title, new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f));
-        TextView sources = action("源设置");
-        sources.setOnClickListener(new View.OnClickListener() {
+        sourceSettings = action("源设置");
+        sourceSettings.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 startActivity(new Intent(VideoMainActivity.this, SourceImportActivity.class));
             }
         });
-        header.addView(sources, new LinearLayout.LayoutParams(dp(120), dp(52)));
+        sourceSettings.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View view, int keyCode, KeyEvent event) {
+                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN
+                        && event.getAction() == KeyEvent.ACTION_UP
+                        && firstChannel != null) {
+                    firstChannel.requestFocus();
+                    return true;
+                }
+                return false;
+            }
+        });
+        header.addView(sourceSettings, new LinearLayout.LayoutParams(dp(120), dp(52)));
         root.addView(header);
 
         status = text("", 16, Color.rgb(180, 205, 233));
@@ -197,6 +210,10 @@ public final class VideoMainActivity extends Activity {
                         return true;
                     }
                     if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                        if (channelIndex < CHANNEL_COLUMN_COUNT && sourceSettings != null) {
+                            sourceSettings.requestFocus();
+                            return true;
+                        }
                         return moveChannelFocus(channelIndex - CHANNEL_COLUMN_COUNT);
                     }
                     if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
