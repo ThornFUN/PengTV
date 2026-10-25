@@ -64,7 +64,7 @@ abstract class BasePageActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(dp(20), dp(10), dp(18), dp(10));
-        row.setBackground(interactiveBackground());
+        setBackgroundCompat(row, interactiveBackground());
         applyTvFocusFeedback(row);
         row.setOnClickListener(listener);
 
@@ -110,7 +110,7 @@ abstract class BasePageActivity extends Activity {
         input.setTextColor(Color.WHITE);
         input.setHintTextColor(Color.rgb(160, 180, 205));
         input.setSingleLine(true);
-        input.setBackground(inputBackground());
+        setBackgroundCompat(input, inputBackground());
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         params.bottomMargin = dp(10);
@@ -156,6 +156,14 @@ abstract class BasePageActivity extends Activity {
                         .start();
             }
         });
+    }
+
+    protected void setBackgroundCompat(View view, android.graphics.drawable.Drawable drawable) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            view.setBackground(drawable);
+        } else {
+            view.setBackgroundDrawable(drawable);
+        }
     }
 
     protected void applyDialogFocusStyle(final AlertDialog dialog) {

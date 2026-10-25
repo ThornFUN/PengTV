@@ -2,6 +2,13 @@ plugins {
     id "com.android.application"
 }
 
+def signingProperties = new Properties()
+def signingPropertiesFile = rootProject.file("keystore.properties")
+if (signingPropertiesFile.isFile()) {
+    signingPropertiesFile.withInputStream { signingProperties.load(it) }
+}
+def hasReleaseSigning = ["storeFile", "storePassword", "keyAlias", "keyPassword"]
+        .every { signingProperties.getProperty(it) }
 
 android {
     namespace "com.penglauncher.recovered"
@@ -17,16 +24,20 @@ android {
 
     signingConfigs {
         release {
-            storeFile rootProject.file("def_sign.jks")
-            storePassword "123456"
-            keyAlias "penglauncher"
-            keyPassword "123456"
+            if (hasReleaseSigning) {
+                storeFile rootProject.file(signingProperties.getProperty("storeFile"))
+                storePassword signingProperties.getProperty("storePassword")
+                keyAlias signingProperties.getProperty("keyAlias")
+                keyPassword signingProperties.getProperty("keyPassword")
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }

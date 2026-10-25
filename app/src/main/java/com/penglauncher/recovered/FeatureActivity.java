@@ -20,6 +20,7 @@ public final class FeatureActivity extends BasePageActivity {
     public static final String WALLPAPER_PREFERENCES = "home_wallpaper";
     public static final String WALLPAPER_PATH_KEY = "path";
     private static final int SELECT_WALLPAPER_REQUEST = 100;
+    private static final long MAX_WALLPAPER_BYTES = 8L * 1024L * 1024L;
 
     public static void open(Context context, String page) {
         Intent intent = new Intent(context, FeatureActivity.class);
@@ -87,23 +88,37 @@ public final class FeatureActivity extends BasePageActivity {
 
     private void copyWallpaper(Uri sourceUri) {
         File target = new File(getFilesDir(), "home_wallpaper");
+        File temporary = new File(getFilesDir(), "home_wallpaper.tmp");
         try (InputStream source = getContentResolver().openInputStream(sourceUri);
-                FileOutputStream destination = new FileOutputStream(target)) {
+                FileOutputStream destination = new FileOutputStream(temporary)) {
             if (source == null) {
+                temporary.delete();
                 Toast.makeText(this, "无法读取所选图片", Toast.LENGTH_SHORT).show();
                 return;
             }
             byte[] buffer = new byte[8192];
             int bytesRead;
+            long bytesCopied = 0;
             while ((bytesRead = source.read(buffer)) != -1) {
+                bytesCopied += bytesRead;
+                if (bytesCopied > MAX_WALLPAPER_BYTES) {
+                    throw new IOException("wallpaper is too large");
+                }
                 destination.write(buffer, 0, bytesRead);
+            }
+            if (target.exists() && !target.delete()) {
+                throw new IOException("cannot replace previous wallpaper");
+            }
+            if (!temporary.renameTo(target)) {
+                throw new IOException("cannot save wallpaper");
             }
             getSharedPreferences(WALLPAPER_PREFERENCES, MODE_PRIVATE)
                     .edit()
                     .putString(WALLPAPER_PATH_KEY, target.getAbsolutePath())
                     .apply();
             Toast.makeText(this, "首页壁纸已更新", Toast.LENGTH_SHORT).show();
-        } catch (IOException exception) {
+        } catch (IOException | SecurityException exception) {
+            temporary.delete();
             Toast.makeText(this, "保存壁纸失败", Toast.LENGTH_SHORT).show();
         }
     }

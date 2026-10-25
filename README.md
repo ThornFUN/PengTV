@@ -40,12 +40,12 @@ app/build/outputs/apk/debug/app-debug.apk
 
 ### 构建签名 Release APK
 
-项目使用根目录的 `def_sign.jks` 作为调试用途的 Release 签名证书。密码不写入仓库；构建时通过 Gradle 属性传入：
+Release 签名信息不纳入版本控制。复制 `keystore.properties.example` 为
+`keystore.properties` 并填入本地证书路径和口令后构建：
 
 ```bash
-./gradlew assembleRelease \
-  -PPENG_STORE_PASSWORD="<keystore-password>" \
-  -PPENG_KEY_PASSWORD="<key-password>"
+cp keystore.properties.example keystore.properties
+./gradlew assembleRelease
 ```
 
 签名后的 Release APK 输出到：

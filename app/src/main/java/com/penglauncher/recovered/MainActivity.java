@@ -2,6 +2,7 @@ package com.penglauncher.recovered;
 
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
+import android.content.ComponentName;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -14,6 +15,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Build;
 import android.os.Handler;
 import android.provider.Settings;
 import android.view.Gravity;
@@ -35,8 +37,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 public final class MainActivity extends BasePageActivity {
     private static final int COLUMN_COUNT = 5;
@@ -104,6 +108,12 @@ public final class MainActivity extends BasePageActivity {
         android.util.Log.e("PENG", "== onResume called");
         clockHandler.removeCallbacks(updateClock);
         clockHandler.post(updateClock);
+        if (homeBackground != null) {
+            availableApps = loadAvailableApps();
+            applyHomeWallpaper();
+            refreshCards();
+            scheduleReloadIfMissing();
+        }
     }
 
     @Override
@@ -159,13 +169,33 @@ public final class MainActivity extends BasePageActivity {
                 FeatureActivity.WALLPAPER_PREFERENCES, MODE_PRIVATE)
                 .getString(FeatureActivity.WALLPAPER_PATH_KEY, null);
         if (wallpaperPath != null && new File(wallpaperPath).isFile()) {
-            Bitmap wallpaper = BitmapFactory.decodeFile(wallpaperPath);
+            Bitmap wallpaper = decodeWallpaper(new File(wallpaperPath));
             if (wallpaper != null) {
                 homeBackground.setImageBitmap(wallpaper);
                 return;
             }
         }
         homeBackground.setImageResource(R.drawable.bg_launcher_default_new);
+    }
+
+    private Bitmap decodeWallpaper(File wallpaperFile) {
+        BitmapFactory.Options bounds = new BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(wallpaperFile.getAbsolutePath(), bounds);
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
+            return null;
+        }
+        int targetWidth = getResources().getDisplayMetrics().widthPixels;
+        int targetHeight = getResources().getDisplayMetrics().heightPixels;
+        int sample = 1;
+        while (bounds.outWidth / sample > targetWidth * 2
+                || bounds.outHeight / sample > targetHeight * 2) {
+            sample *= 2;
+        }
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inSampleSize = sample;
+        options.inPreferredConfig = Bitmap.Config.RGB_565;
+        return BitmapFactory.decodeFile(wallpaperFile.getAbsolutePath(), options);
     }
 
     private View createHomePage() {
@@ -472,7 +502,7 @@ public final class MainActivity extends BasePageActivity {
         card.setGravity(Gravity.CENTER);
         card.setClickable(true);
         card.setFocusable(true);
-        card.setBackground(cardBackground());
+        setBackgroundCompat(card, cardBackground());
         card.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View view, boolean focused) {
@@ -625,15 +655,10 @@ public final class MainActivity extends BasePageActivity {
 
     private List<AppChoice> loadAvailableApps() {
         PackageManager packageManager = getPackageManager();
-        Intent query = new Intent(Intent.ACTION_MAIN);
-        query.addCategory(Intent.CATEGORY_LAUNCHER);
-        List<ResolveInfo> resolveInfos = packageManager.queryIntentActivities(query, PackageManager.MATCH_ALL);
         List<AppChoice> apps = new ArrayList<>();
-        for (ResolveInfo app : resolveInfos) {
-            if (!getPackageName().equals(app.activityInfo.packageName)) {
-                apps.add(new AppChoice(app, app.loadLabel(packageManager).toString()));
-            }
-        }
+        Set<ComponentName> seen = new HashSet<>();
+        addLaunchableApps(packageManager, Intent.CATEGORY_LEANBACK_LAUNCHER, seen, apps);
+        addLaunchableApps(packageManager, Intent.CATEGORY_LAUNCHER, seen, apps);
         Collections.sort(apps, new Comparator<AppChoice>() {
             @Override
             public int compare(AppChoice left, AppChoice right) {
@@ -641,6 +666,24 @@ public final class MainActivity extends BasePageActivity {
             }
         });
         return apps;
+    }
+
+    private void addLaunchableApps(PackageManager packageManager, String category,
+            Set<ComponentName> seen, List<AppChoice> apps) {
+        Intent query = new Intent(Intent.ACTION_MAIN);
+        query.addCategory(category);
+        for (ResolveInfo app : packageManager.queryIntentActivities(query, 0)) {
+            if (app.activityInfo == null || getPackageName().equals(app.activityInfo.packageName)) {
+                continue;
+            }
+            ComponentName component = new ComponentName(
+                    app.activityInfo.packageName, app.activityInfo.name);
+            if (!seen.add(component)) {
+                continue;
+            }
+            CharSequence label = app.loadLabel(packageManager);
+            apps.add(new AppChoice(app, label == null ? app.activityInfo.packageName : label.toString()));
+        }
     }
 
     private boolean containsPackage(String packageName) {

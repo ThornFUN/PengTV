@@ -6,6 +6,6 @@ local.properties
 *.iml
 .idea/
 *.jks
-!def_sign.jks
+keystore.properties
 .DS_Store
 recovered/apk-decompile/
