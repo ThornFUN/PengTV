@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public final class SourceImportActivity extends Activity {
+    static final String EXTRA_OPEN_PHONE = "open_phone";
     private static final int IMPORT_PORT = 8081;
     private static final int MAX_REQUEST_BODY_BYTES = 16384;
 
@@ -42,7 +43,11 @@ public final class SourceImportActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        showSourceForm();
+        if (getIntent().getBooleanExtra(EXTRA_OPEN_PHONE, false)) {
+            showPhoneImport();
+        } else {
+            showSourceForm();
+        }
     }
 
     @Override

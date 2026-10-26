@@ -86,13 +86,9 @@ public final class VodSourceActivity extends Activity {
             }
             sources.add(source);
         }
-        if (sources.isEmpty()) {
-            sourceInput.setError("请至少输入一个影视源地址");
-            sourceInput.requestFocus();
-            return;
-        }
         VodPreferences.saveSourceUrls(this, sources);
-        Toast.makeText(this, "已保存 " + sources.size() + " 个影视源", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, sources.isEmpty() ? "已清空用户影视源" : "已保存 "
+                + sources.size() + " 个影视源", Toast.LENGTH_SHORT).show();
         finish();
     }
 

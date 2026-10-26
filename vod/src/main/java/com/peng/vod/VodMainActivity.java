@@ -13,8 +13,6 @@ import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +21,7 @@ public final class VodMainActivity extends Activity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private TextView status;
     private LinearLayout items;
+    private int loadGeneration;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,6 +80,7 @@ public final class VodMainActivity extends Activity {
 
     private void loadCatalog() {
         final List<String> sources = VodPreferences.sourceUrls(this);
+        final int generation = ++loadGeneration;
         items.removeAllViews();
         status.setText("正在加载影视源...");
         new Thread(new Runnable() {
@@ -90,6 +90,9 @@ public final class VodMainActivity extends Activity {
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
+                        if (generation != loadGeneration || isFinishing()) {
+                            return;
+                        }
                         showCatalog(catalog.items);
                         if (sources.isEmpty()) {
                             status.setText("已加载 2 个内置合法测试资源。请选择“影视源”追加受信任的 version=1 JSON 地址。");

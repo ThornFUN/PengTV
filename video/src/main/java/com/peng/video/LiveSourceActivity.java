@@ -19,6 +19,8 @@ import java.util.UUID;
 
 public final class LiveSourceActivity extends Activity {
     private VideoPreferences.LiveSource editingSource;
+    private boolean sourceListVisible;
+    private boolean hasResumed;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -26,7 +28,17 @@ public final class LiveSourceActivity extends Activity {
         showSources();
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (hasResumed && sourceListVisible) {
+            showSources();
+        }
+        hasResumed = true;
+    }
+
     private void showSources() {
+        sourceListVisible = true;
         editingSource = null;
         LinearLayout root = pageRoot();
         root.addView(title("直播源管理"));
@@ -44,7 +56,9 @@ public final class LiveSourceActivity extends Activity {
         phone.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                startActivity(new Intent(LiveSourceActivity.this, SourceImportActivity.class));
+                Intent intent = new Intent(LiveSourceActivity.this, SourceImportActivity.class);
+                intent.putExtra(SourceImportActivity.EXTRA_OPEN_PHONE, true);
+                startActivity(intent);
             }
         });
         LinearLayout.LayoutParams phoneParams = new LinearLayout.LayoutParams(0, dp(56), 1.0f);
@@ -87,6 +101,7 @@ public final class LiveSourceActivity extends Activity {
     }
 
     private void showEditor(VideoPreferences.LiveSource source) {
+        sourceListVisible = false;
         editingSource = source;
         LinearLayout root = pageRoot();
         root.addView(title(source == null ? "添加直播源" : "编辑直播源"));

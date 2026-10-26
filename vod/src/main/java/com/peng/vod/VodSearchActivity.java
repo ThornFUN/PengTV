@@ -23,6 +23,7 @@ public final class VodSearchActivity extends Activity {
     private TextView status;
     private LinearLayout results;
     private List<VodCatalog.Item> catalog = new ArrayList<>();
+    private boolean catalogReady;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -87,6 +88,7 @@ public final class VodSearchActivity extends Activity {
                     @Override
                     public void run() {
                         catalog = loaded.items;
+                        catalogReady = true;
                         status.setText("已加载 " + catalog.size() + " 个条目，请输入关键词。"
                                 + (loaded.failedSources == 0 ? ""
                                 : " " + loaded.failedSources + " 个源加载失败。"));
@@ -97,6 +99,10 @@ public final class VodSearchActivity extends Activity {
     }
 
     private void search() {
+        if (!catalogReady) {
+            status.setText("影视源仍在加载，请稍后再搜索。");
+            return;
+        }
         String keyword = keywordInput.getText().toString().trim().toLowerCase(Locale.US);
         if (keyword.length() == 0) {
             keywordInput.setError("请输入关键词");
