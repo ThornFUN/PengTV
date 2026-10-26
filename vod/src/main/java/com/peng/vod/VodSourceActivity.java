@@ -34,22 +34,22 @@ public final class VodSourceActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         descriptionParams.topMargin = dp(14);
         root.addView(description, descriptionParams);
-        TextView label = text("影视源 JSON 地址", 18, Color.WHITE);
+        TextView label = text("影视源 JSON 地址（每行一个）", 18, Color.WHITE);
         LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         labelParams.topMargin = dp(28);
         root.addView(label, labelParams);
         sourceInput = new EditText(this);
-        sourceInput.setSingleLine(true);
+        sourceInput.setSingleLine(false);
         sourceInput.setTextColor(Color.WHITE);
         sourceInput.setTextSize(17);
         sourceInput.setHintTextColor(Color.rgb(150, 177, 210));
-        sourceInput.setHint("https://example.com/peng-vod.json");
-        sourceInput.setText(VodPreferences.sourceUrl(this));
+        sourceInput.setHint("https://example.com/peng-vod.json\nhttps://example.com/company-vod.json");
+        sourceInput.setText(joinSources(VodPreferences.sourceUrls(this)));
         sourceInput.setBackground(inputBackground());
         sourceInput.setPadding(dp(18), 0, dp(18), 0);
         root.addView(sourceInput, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dp(62)));
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(150)));
         TextView schema = text("格式：{\"version\":1,\"items\":[{\"category\":\"电影\","
                 + "\"title\":\"示例\",\"description\":\"简介\",\"streams\":[{\"url\":\"https://...m3u8\"}]}]}",
                 15, Color.rgb(194, 213, 235));
@@ -72,15 +72,39 @@ public final class VodSourceActivity extends Activity {
     }
 
     private void save() {
-        String source = sourceInput.getText().toString().trim();
-        if (!VodPreferences.isHttpUrl(source)) {
-            sourceInput.setError("请输入 http:// 或 https:// JSON 地址");
+        String[] lines = sourceInput.getText().toString().split("\\n");
+        java.util.List<String> sources = new java.util.ArrayList<>();
+        for (String line : lines) {
+            String source = line.trim();
+            if (source.length() == 0) {
+                continue;
+            }
+            if (!VodPreferences.isHttpUrl(source)) {
+                sourceInput.setError("每行都必须是 http:// 或 https:// JSON 地址");
+                sourceInput.requestFocus();
+                return;
+            }
+            sources.add(source);
+        }
+        if (sources.isEmpty()) {
+            sourceInput.setError("请至少输入一个影视源地址");
             sourceInput.requestFocus();
             return;
         }
-        VodPreferences.saveSourceUrl(this, source);
-        Toast.makeText(this, "影视源已保存", Toast.LENGTH_SHORT).show();
+        VodPreferences.saveSourceUrls(this, sources);
+        Toast.makeText(this, "已保存 " + sources.size() + " 个影视源", Toast.LENGTH_SHORT).show();
         finish();
+    }
+
+    private String joinSources(java.util.List<String> sources) {
+        StringBuilder text = new StringBuilder();
+        for (String source : sources) {
+            if (text.length() > 0) {
+                text.append('\n');
+            }
+            text.append(source);
+        }
+        return text.toString();
     }
 
     private TextView text(String value, int size, int color) {

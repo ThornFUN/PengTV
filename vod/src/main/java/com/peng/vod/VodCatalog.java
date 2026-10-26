@@ -21,12 +21,24 @@ final class VodCatalog {
         final String title;
         final String description;
         final String url;
+        final String sourceName;
 
-        Item(String category, String title, String description, String url) {
+        Item(String category, String title, String description, String url, String sourceName) {
             this.category = category;
             this.title = title;
             this.description = description;
             this.url = url;
+            this.sourceName = sourceName;
+        }
+    }
+
+    static final class LoadResult {
+        final List<Item> items;
+        final int failedSources;
+
+        LoadResult(List<Item> items, int failedSources) {
+            this.items = items;
+            this.failedSources = failedSources;
         }
     }
 
@@ -38,11 +50,25 @@ final class VodCatalog {
         items.add(new Item("测试资源", "Apple HLS 多码率示例",
                 "Apple 官方公开播放器测试流，含多清晰度、音轨和字幕。",
                 "https://devstreaming-cdn.apple.com/videos/streaming/examples/"
-                        + "img_bipbop_adv_example_ts/master.m3u8"));
+                        + "img_bipbop_adv_example_ts/master.m3u8", "内置资源"));
         items.add(new Item("公开直播", "NASA TV Public",
                 "NASA 公开频道直播流，通过 Akamai CDN 分发。",
-                "https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8"));
+                "https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8",
+                "内置资源"));
         return items;
+    }
+
+    static LoadResult loadAll(List<String> sources) {
+        List<Item> result = new ArrayList<>(defaultItems());
+        int failures = 0;
+        for (String source : sources) {
+            try {
+                result.addAll(load(source));
+            } catch (IOException exception) {
+                failures++;
+            }
+        }
+        return new LoadResult(result, failures);
     }
 
     static List<Item> load(String source) throws IOException {
@@ -53,7 +79,7 @@ final class VodCatalog {
         InputStream input = connection.getInputStream();
         try {
             String json = read(input);
-            return parse(json);
+            return parse(json, source);
         } finally {
             input.close();
             connection.disconnect();
@@ -74,7 +100,7 @@ final class VodCatalog {
         return text.toString();
     }
 
-    private static List<Item> parse(String json) throws IOException {
+    private static List<Item> parse(String json, String sourceUrl) throws IOException {
         try {
             JSONObject root = new JSONObject(json);
             if (root.optInt("version", 0) != 1) {
@@ -83,6 +109,10 @@ final class VodCatalog {
             JSONArray items = root.optJSONArray("items");
             if (items == null) {
                 throw new IOException("影视源缺少 items 数组");
+            }
+            String sourceName = root.optString("name").trim();
+            if (sourceName.length() == 0) {
+                sourceName = new URL(sourceUrl).getHost();
             }
             List<Item> result = new ArrayList<>();
             for (int index = 0; index < items.length(); index++) {
@@ -103,7 +133,7 @@ final class VodCatalog {
                 }
                 if (!TextUtils.isEmpty(title) && VodPreferences.isHttpUrl(url)) {
                     result.add(new Item(category.length() == 0 ? "其他" : category, title,
-                            description, url));
+                            description, url, sourceName));
                 }
             }
             if (result.isEmpty()) {

@@ -45,6 +45,14 @@ public final class VodMainActivity extends Activity {
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.addView(text("PENG影视", 30, Color.WHITE), new LinearLayout.LayoutParams(
                 0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f));
+        TextView search = action("搜索");
+        search.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivity(new Intent(VodMainActivity.this, VodSearchActivity.class));
+            }
+        });
+        header.addView(search, new LinearLayout.LayoutParams(dp(110), dp(54)));
         TextView source = action("影视源");
         source.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -52,7 +60,9 @@ public final class VodMainActivity extends Activity {
                 startActivity(new Intent(VodMainActivity.this, VodSourceActivity.class));
             }
         });
-        header.addView(source, new LinearLayout.LayoutParams(dp(140), dp(54)));
+        LinearLayout.LayoutParams sourceParams = new LinearLayout.LayoutParams(dp(140), dp(54));
+        sourceParams.leftMargin = dp(14);
+        header.addView(source, sourceParams);
         root.addView(header);
         status = text("", 17, Color.rgb(194, 213, 235));
         LinearLayout.LayoutParams statusParams = new LinearLayout.LayoutParams(
@@ -70,34 +80,25 @@ public final class VodMainActivity extends Activity {
     }
 
     private void loadCatalog() {
-        final String source = VodPreferences.sourceUrl(this);
+        final List<String> sources = VodPreferences.sourceUrls(this);
         items.removeAllViews();
-        if (!VodPreferences.isHttpUrl(source)) {
-            showCatalog(VodCatalog.defaultItems());
-            status.setText("已加载 2 个内置合法测试资源。请选择“影视源”追加受信任的 version=1 JSON 地址。");
-            return;
-        }
         status.setText("正在加载影视源...");
         new Thread(new Runnable() {
             @Override
             public void run() {
-                try {
-                    final List<VodCatalog.Item> catalog = new ArrayList<>(VodCatalog.defaultItems());
-                    catalog.addAll(VodCatalog.load(source));
-                    handler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            showCatalog(catalog);
+                final VodCatalog.LoadResult catalog = VodCatalog.loadAll(sources);
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        showCatalog(catalog.items);
+                        if (sources.isEmpty()) {
+                            status.setText("已加载 2 个内置合法测试资源。请选择“影视源”追加受信任的 version=1 JSON 地址。");
+                        } else if (catalog.failedSources > 0) {
+                            status.setText("已加载 " + catalog.items.size() + " 个影视条目；"
+                                    + catalog.failedSources + " 个源加载失败。");
                         }
-                    });
-                } catch (final IOException exception) {
-                    handler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            status.setText("影视源加载失败：" + exception.getMessage());
-                        }
-                    });
-                }
+                    }
+                });
             }
         }, "vod-loader").start();
     }
@@ -117,8 +118,8 @@ public final class VodMainActivity extends Activity {
             TextView title = text(entry.getKey(), 22, Color.WHITE);
             items.addView(title);
             for (final VodCatalog.Item item : entry.getValue()) {
-                TextView card = action(item.title + (item.description.length() == 0
-                        ? "" : "\n" + item.description));
+                TextView card = action(item.title + "\n" + item.sourceName
+                        + (item.description.length() == 0 ? "" : " · " + item.description));
                 card.setGravity(Gravity.CENTER_VERTICAL);
                 card.setPadding(dp(20), dp(12), dp(20), dp(12));
                 card.setOnClickListener(new View.OnClickListener() {
