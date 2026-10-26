@@ -125,7 +125,7 @@ public final class VodSearchActivity extends Activity {
             result.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    VodPlayerActivity.open(VodSearchActivity.this, item.title, item.url);
+                    VodDetailActivity.open(VodSearchActivity.this, item);
                 }
             });
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(

@@ -16,19 +16,83 @@ import java.util.List;
 final class VodCatalog {
     private static final int MAX_CONFIG_BYTES = 1024 * 1024;
 
+    static final class Stream {
+        final String name;
+        final String url;
+
+        Stream(String name, String url) {
+            this.name = name;
+            this.url = url;
+        }
+    }
+
+    static final class Episode {
+        final String season;
+        final String title;
+        final List<Stream> streams;
+
+        Episode(String season, String title, List<Stream> streams) {
+            this.season = season;
+            this.title = title;
+            this.streams = streams;
+        }
+    }
+
     static final class Item {
         final String category;
         final String title;
         final String description;
-        final String url;
         final String sourceName;
+        final List<Stream> streams;
+        final List<Episode> episodes;
 
-        Item(String category, String title, String description, String url, String sourceName) {
+        Item(String category, String title, String description, String sourceName,
+                List<Stream> streams, List<Episode> episodes) {
             this.category = category;
             this.title = title;
             this.description = description;
-            this.url = url;
             this.sourceName = sourceName;
+            this.streams = streams;
+            this.episodes = episodes;
+        }
+
+        String firstUrl() {
+            List<Stream> values = episodes.isEmpty() ? streams : episodes.get(0).streams;
+            return values.isEmpty() ? "" : values.get(0).url;
+        }
+
+        String toJson() {
+            JSONObject root = new JSONObject();
+            try {
+                root.put("category", category);
+                root.put("title", title);
+                root.put("description", description);
+                root.put("source", sourceName);
+                root.put("streams", streamsToJson(streams));
+                JSONArray episodeArray = new JSONArray();
+                for (Episode episode : episodes) {
+                    JSONObject value = new JSONObject();
+                    value.put("season", episode.season);
+                    value.put("title", episode.title);
+                    value.put("streams", streamsToJson(episode.streams));
+                    episodeArray.put(value);
+                }
+                root.put("episodes", episodeArray);
+            } catch (JSONException ignored) {
+            }
+            return root.toString();
+        }
+
+        static Item fromJson(String value) {
+            try {
+                JSONObject root = new JSONObject(value);
+                return new Item(root.optString("category", "其他"), root.optString("title"),
+                        root.optString("description"), root.optString("source"),
+                        streamsFromJson(root.optJSONArray("streams")),
+                        episodesFromJson(root.optJSONArray("episodes"), ""));
+            } catch (JSONException exception) {
+                return null;
+            }
         }
     }
 
@@ -47,14 +111,18 @@ final class VodCatalog {
 
     static List<Item> defaultItems() {
         List<Item> items = new ArrayList<>();
+        List<Stream> apple = new ArrayList<>();
+        apple.add(new Stream("默认线路", "https://devstreaming-cdn.apple.com/videos/streaming/"
+                + "examples/img_bipbop_adv_example_ts/master.m3u8"));
         items.add(new Item("测试资源", "Apple HLS 多码率示例",
-                "Apple 官方公开播放器测试流，含多清晰度、音轨和字幕。",
-                "https://devstreaming-cdn.apple.com/videos/streaming/examples/"
-                        + "img_bipbop_adv_example_ts/master.m3u8", "内置资源"));
+                "Apple 官方公开播放器测试流，含多清晰度、音轨和字幕。", "内置资源",
+                apple, new ArrayList<Episode>()));
+        List<Stream> nasa = new ArrayList<>();
+        nasa.add(new Stream("默认线路",
+                "https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8"));
         items.add(new Item("公开直播", "NASA TV Public",
-                "NASA 公开频道直播流，通过 Akamai CDN 分发。",
-                "https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8",
-                "内置资源"));
+                "NASA 公开频道直播流，通过 Akamai CDN 分发。", "内置资源",
+                nasa, new ArrayList<Episode>()));
         return items;
     }
 
@@ -78,8 +146,7 @@ final class VodCatalog {
         connection.setRequestProperty("User-Agent", "PENGVod/1.0");
         InputStream input = connection.getInputStream();
         try {
-            String json = read(input);
-            return parse(json, source);
+            return parse(read(input), source);
         } finally {
             input.close();
             connection.disconnect();
@@ -106,8 +173,8 @@ final class VodCatalog {
             if (root.optInt("version", 0) != 1) {
                 throw new IOException("仅支持 version=1 的影视源配置");
             }
-            JSONArray items = root.optJSONArray("items");
-            if (items == null) {
+            JSONArray values = root.optJSONArray("items");
+            if (values == null) {
                 throw new IOException("影视源缺少 items 数组");
             }
             String sourceName = root.optString("name").trim();
@@ -115,25 +182,28 @@ final class VodCatalog {
                 sourceName = new URL(sourceUrl).getHost();
             }
             List<Item> result = new ArrayList<>();
-            for (int index = 0; index < items.length(); index++) {
-                JSONObject item = items.optJSONObject(index);
-                if (item == null) {
+            for (int index = 0; index < values.length(); index++) {
+                JSONObject value = values.optJSONObject(index);
+                if (value == null) {
                     continue;
                 }
-                String category = item.optString("category", "其他").trim();
-                String title = item.optString("title").trim();
-                String description = item.optString("description").trim();
-                JSONArray streams = item.optJSONArray("streams");
-                String url = "";
-                if (streams != null && streams.length() > 0) {
-                    JSONObject stream = streams.optJSONObject(0);
-                    if (stream != null) {
-                        url = stream.optString("url").trim();
+                String category = value.optString("category", "其他").trim();
+                String title = value.optString("title").trim();
+                List<Stream> streams = streamsFromJson(value.optJSONArray("streams"));
+                List<Episode> episodes = episodesFromJson(value.optJSONArray("episodes"), "");
+                JSONArray seasons = value.optJSONArray("seasons");
+                if (seasons != null) {
+                    for (int seasonIndex = 0; seasonIndex < seasons.length(); seasonIndex++) {
+                        JSONObject season = seasons.optJSONObject(seasonIndex);
+                        if (season != null) {
+                            episodes.addAll(episodesFromJson(season.optJSONArray("episodes"),
+                                    season.optString("title", "第" + (seasonIndex + 1) + "季")));
+                        }
                     }
                 }
-                if (!TextUtils.isEmpty(title) && VodPreferences.isHttpUrl(url)) {
+                if (!TextUtils.isEmpty(title) && (!streams.isEmpty() || !episodes.isEmpty())) {
                     result.add(new Item(category.length() == 0 ? "其他" : category, title,
-                            description, url, sourceName));
+                            value.optString("description").trim(), sourceName, streams, episodes));
                 }
             }
             if (result.isEmpty()) {
@@ -143,5 +213,53 @@ final class VodCatalog {
         } catch (JSONException exception) {
             throw new IOException("影视源不是有效 JSON", exception);
         }
+    }
+
+    private static JSONArray streamsToJson(List<Stream> streams) throws JSONException {
+        JSONArray values = new JSONArray();
+        for (Stream stream : streams) {
+            JSONObject value = new JSONObject();
+            value.put("name", stream.name);
+            value.put("url", stream.url);
+            values.put(value);
+        }
+        return values;
+    }
+
+    private static List<Stream> streamsFromJson(JSONArray values) {
+        List<Stream> streams = new ArrayList<>();
+        if (values == null) {
+            return streams;
+        }
+        for (int index = 0; index < values.length(); index++) {
+            JSONObject value = values.optJSONObject(index);
+            String url = value == null ? "" : value.optString("url").trim();
+            if (VodPreferences.isHttpUrl(url)) {
+                String name = value.optString("name", "线路 " + (streams.size() + 1)).trim();
+                streams.add(new Stream(name.length() == 0 ? "线路 " + (streams.size() + 1) : name, url));
+            }
+        }
+        return streams;
+    }
+
+    private static List<Episode> episodesFromJson(JSONArray values, String defaultSeason) {
+        List<Episode> episodes = new ArrayList<>();
+        if (values == null) {
+            return episodes;
+        }
+        for (int index = 0; index < values.length(); index++) {
+            JSONObject value = values.optJSONObject(index);
+            if (value == null) {
+                continue;
+            }
+            List<Stream> streams = streamsFromJson(value.optJSONArray("streams"));
+            if (!streams.isEmpty()) {
+                String title = value.optString("title", "第" + (index + 1) + "集").trim();
+                String season = value.optString("season", defaultSeason).trim();
+                episodes.add(new Episode(season, title.length() == 0 ? "第" + (index + 1) + "集" : title,
+                        streams));
+            }
+        }
+        return episodes;
     }
 }

@@ -29,6 +29,10 @@
             android:exported="false"
             android:screenOrientation="landscape" />
         <activity
+            android:name=".VodDetailActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity
             android:name=".VodPlayerActivity"
             android:exported="false"
             android:screenOrientation="landscape" />

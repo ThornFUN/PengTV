@@ -11,6 +11,7 @@ import android.os.Looper;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.LinearLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import java.util.LinkedHashMap;
@@ -22,6 +23,7 @@ public final class VodMainActivity extends Activity {
     private TextView status;
     private LinearLayout items;
     private int loadGeneration;
+    private String loadedSourcesSignature;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,7 +34,12 @@ public final class VodMainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        loadCatalog();
+        List<String> sources = VodPreferences.sourceUrls(this);
+        String signature = sources.toString();
+        if (signature.equals(loadedSourcesSignature) && items.getChildCount() > 0) {
+            return;
+        }
+        loadCatalog(sources, signature);
     }
 
     private void buildScreen() {
@@ -78,8 +85,7 @@ public final class VodMainActivity extends Activity {
         setContentView(root);
     }
 
-    private void loadCatalog() {
-        final List<String> sources = VodPreferences.sourceUrls(this);
+    private void loadCatalog(final List<String> sources, final String signature) {
         final int generation = ++loadGeneration;
         items.removeAllViews();
         status.setText("正在加载影视源...");
@@ -93,6 +99,7 @@ public final class VodMainActivity extends Activity {
                         if (generation != loadGeneration || isFinishing()) {
                             return;
                         }
+                        loadedSourcesSignature = signature;
                         showCatalog(catalog.items);
                         if (sources.isEmpty()) {
                             status.setText("已加载 2 个内置合法测试资源。请选择“影视源”追加受信任的 version=1 JSON 地址。");
@@ -108,6 +115,7 @@ public final class VodMainActivity extends Activity {
 
     private void showCatalog(List<VodCatalog.Item> catalog) {
         status.setText("已加载 " + catalog.size() + " 个影视条目");
+        firstContentCard = null;
         Map<String, List<VodCatalog.Item>> groups = new LinkedHashMap<>();
         for (VodCatalog.Item item : catalog) {
             List<VodCatalog.Item> group = groups.get(item.category);
@@ -120,6 +128,12 @@ public final class VodMainActivity extends Activity {
         for (Map.Entry<String, List<VodCatalog.Item>> entry : groups.entrySet()) {
             TextView title = text(entry.getKey(), 22, Color.WHITE);
             items.addView(title);
+            HorizontalScrollView rowScroll = new HorizontalScrollView(this);
+            rowScroll.setHorizontalScrollBarEnabled(false);
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setPadding(0, dp(10), 0, dp(12));
+            rowScroll.addView(row);
             for (final VodCatalog.Item item : entry.getValue()) {
                 TextView card = action(item.title + "\n" + item.sourceName
                         + (item.description.length() == 0 ? "" : " · " + item.description));
@@ -128,17 +142,22 @@ public final class VodMainActivity extends Activity {
                 card.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        VodPlayerActivity.open(VodMainActivity.this, item.title, item.url);
+                        VodDetailActivity.open(VodMainActivity.this, item);
                     }
                 });
                 LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-                params.topMargin = dp(10);
-                items.addView(card, params);
+                        contentCardWidth(), contentCardHeight());
+                params.rightMargin = dp(12);
+                row.addView(card, params);
+                if (row.getChildCount() == 1 && firstContentCard == null) {
+                    firstContentCard = card;
+                }
             }
+            items.addView(rowScroll, new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, contentCardHeight() + dp(22)));
         }
-        if (items.getChildCount() > 1) {
-            items.getChildAt(1).requestFocus();
+        if (firstContentCard != null) {
+            firstContentCard.requestFocus();
         }
     }
 
@@ -177,5 +196,16 @@ public final class VodMainActivity extends Activity {
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private View firstContentCard;
+
+    private int contentCardWidth() {
+        int spacing = dp(12) * 4;
+        return (getResources().getDisplayMetrics().widthPixels - dp(68) - spacing) / 5;
+    }
+
+    private int contentCardHeight() {
+        return Math.max(dp(92), Math.round(contentCardWidth() * 0.62f));
     }
 }
