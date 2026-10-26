@@ -34,10 +34,13 @@ public final class SourceImportActivity extends Activity {
     private static final int MAX_REQUEST_BODY_BYTES = 16384;
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final Object serverLock = new Object();
     private EditText m3uInput;
     private EditText epgInput;
     private volatile boolean serverRunning;
     private ServerSocket serverSocket;
+    private Socket activeClientSocket;
+    private int serverGeneration;
     private boolean showingPhoneImport;
 
     @Override
@@ -163,31 +166,56 @@ public final class SourceImportActivity extends Activity {
 
     private void startServer(final TextView address) {
         stopServer();
-        serverRunning = true;
+        final int generation;
+        synchronized (serverLock) {
+            serverRunning = true;
+            generation = ++serverGeneration;
+        }
         new Thread(new Runnable() {
             @Override
             public void run() {
+                ServerSocket localServerSocket = null;
                 try {
-                    serverSocket = new ServerSocket(IMPORT_PORT);
+                    localServerSocket = new ServerSocket(IMPORT_PORT);
+                    synchronized (serverLock) {
+                        if (!isServerActiveLocked(generation)) {
+                            closeServerSocket(localServerSocket);
+                            return;
+                        }
+                        serverSocket = localServerSocket;
+                    }
                     final String endpoint = "http://" + localIpAddress() + ":" + IMPORT_PORT;
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            if (showingPhoneImport) {
+                            if (showingPhoneImport && isServerActive(generation)) {
                                 address.setText(endpoint);
                             }
                         }
                     });
-                    while (serverRunning) {
-                        Socket socket = serverSocket.accept();
+                    while (isServerActive(generation)) {
+                        Socket socket = localServerSocket.accept();
+                        if (!isServerActive(generation)) {
+                            closeClientSocket(socket);
+                            break;
+                        }
+                        socket.setSoTimeout(15000);
+                        synchronized (serverLock) {
+                            activeClientSocket = socket;
+                        }
                         handleRequest(socket);
+                        synchronized (serverLock) {
+                            if (activeClientSocket == socket) {
+                                activeClientSocket = null;
+                            }
+                        }
                     }
                 } catch (final IOException exception) {
-                    if (serverRunning) {
+                    if (isServerActive(generation)) {
                         mainHandler.post(new Runnable() {
                             @Override
                             public void run() {
-                                if (showingPhoneImport) {
+                                if (showingPhoneImport && isServerActive(generation)) {
                                     address.setText("无法启动导入服务：端口 8081 可能正被占用。");
                                     address.setTextSize(20);
                                 }
@@ -195,24 +223,53 @@ public final class SourceImportActivity extends Activity {
                         });
                     }
                 } finally {
-                    closeServerSocket();
+                    closeServerSocket(localServerSocket);
+                    synchronized (serverLock) {
+                        if (serverSocket == localServerSocket) {
+                            serverSocket = null;
+                        }
+                    }
                 }
             }
         }, "iptv-import-server").start();
     }
 
     private void stopServer() {
-        serverRunning = false;
-        closeServerSocket();
+        synchronized (serverLock) {
+            serverRunning = false;
+            serverGeneration++;
+            closeServerSocket(serverSocket);
+            serverSocket = null;
+            closeClientSocket(activeClientSocket);
+            activeClientSocket = null;
+        }
     }
 
-    private synchronized void closeServerSocket() {
-        if (serverSocket != null) {
+    private boolean isServerActive(int generation) {
+        synchronized (serverLock) {
+            return isServerActiveLocked(generation);
+        }
+    }
+
+    private boolean isServerActiveLocked(int generation) {
+        return serverRunning && serverGeneration == generation;
+    }
+
+    private void closeServerSocket(ServerSocket socket) {
+        if (socket != null) {
             try {
-                serverSocket.close();
+                socket.close();
             } catch (IOException ignored) {
             }
-            serverSocket = null;
+        }
+    }
+
+    private void closeClientSocket(Socket socket) {
+        if (socket != null) {
+            try {
+                socket.close();
+            } catch (IOException ignored) {
+            }
         }
     }
 
