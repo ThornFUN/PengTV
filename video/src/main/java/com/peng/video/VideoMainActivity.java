@@ -110,7 +110,7 @@ public final class VideoMainActivity extends Activity {
         sourceSettings.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                startActivity(new Intent(VideoMainActivity.this, SourceImportActivity.class));
+                startActivity(new Intent(VideoMainActivity.this, LiveSourceActivity.class));
             }
         });
         sourceSettings.setOnKeyListener(new View.OnKeyListener() {
@@ -165,28 +165,34 @@ public final class VideoMainActivity extends Activity {
                 }
                 removeHiddenChannels(channels);
                 final int defaultChannelCount = channels.size();
-                try {
-                    String source = VideoPreferences.m3uUrl(VideoMainActivity.this);
-                    if (VideoPreferences.isHttpUrl(source)) {
-                        channels.addAll(loadChannels(source));
+                Map<String, String> programmes = new HashMap<>();
+                boolean sourceFailed = false;
+                boolean guideFailed = false;
+                for (VideoPreferences.LiveSource source
+                        : VideoPreferences.liveSources(VideoMainActivity.this)) {
+                    if (!source.enabled) {
+                        continue;
                     }
-                    removeHiddenChannels(channels);
-                    final GuideResult guide = loadGuide(VideoPreferences.epgUrl(VideoMainActivity.this));
-                    mainHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            showChannels(channels, guide, false, defaultChannelCount, autoPlayLastChannel);
-                        }
-                    });
-                } catch (final IOException exception) {
-                    mainHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            showChannels(channels, new GuideResult(new HashMap<String, String>(), false),
-                                    true, defaultChannelCount, autoPlayLastChannel);
-                        }
-                    });
+                    try {
+                        channels.addAll(loadChannels(source.m3uUrl));
+                    } catch (IOException exception) {
+                        sourceFailed = true;
+                        continue;
+                    }
+                    GuideResult sourceGuide = loadGuide(source.epgUrl);
+                    programmes.putAll(sourceGuide.programmes);
+                    guideFailed |= sourceGuide.failed;
                 }
+                removeHiddenChannels(channels);
+                final GuideResult guide = new GuideResult(programmes, guideFailed);
+                final boolean hasSourceFailure = sourceFailed;
+                mainHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        showChannels(channels, guide, hasSourceFailure, defaultChannelCount,
+                                autoPlayLastChannel);
+                    }
+                });
             }
         }, "iptv-loader").start();
     }
@@ -526,7 +532,7 @@ public final class VideoMainActivity extends Activity {
         configure.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                startActivity(new Intent(VideoMainActivity.this, SourceImportActivity.class));
+                startActivity(new Intent(VideoMainActivity.this, LiveSourceActivity.class));
             }
         });
         channelList.addView(configure, new LinearLayout.LayoutParams(

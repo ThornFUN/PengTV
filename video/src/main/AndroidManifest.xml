@@ -26,6 +26,10 @@
             android:exported="false"
             android:screenOrientation="landscape" />
         <activity
+            android:name=".LiveSourceActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity
             android:name=".LineSelectionActivity"
             android:exported="false"
             android:screenOrientation="landscape" />

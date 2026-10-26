@@ -3,6 +3,9 @@ package com.peng.video;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -12,6 +15,7 @@ final class VideoPreferences {
     static final String PREFERENCES = "iptv_sources";
     static final String M3U_URL = "m3u_url";
     static final String EPG_URL = "epg_url";
+    private static final String LIVE_SOURCES = "live_sources";
     private static final String LAST_CHANNEL_URL = "last_channel_url";
     private static final String DEFAULT_LINE_PREFIX = "default_line_";
     private static final String HIDDEN_CHANNELS = "hidden_channels";
@@ -32,10 +36,98 @@ final class VideoPreferences {
     }
 
     static void save(Context context, String m3uUrl, String epgUrl) {
-        preferences(context).edit()
-                .putString(M3U_URL, m3uUrl.trim())
-                .putString(EPG_URL, epgUrl.trim())
-                .apply();
+        upsertLiveSource(context, new LiveSource("legacy-import", "导入的直播源",
+                m3uUrl, epgUrl, true));
+    }
+
+    static List<LiveSource> liveSources(Context context) {
+        String value = preferences(context).getString(LIVE_SOURCES, "");
+        List<LiveSource> sources = new ArrayList<>();
+        if (value.length() > 0) {
+            try {
+                JSONArray array = new JSONArray(value);
+                for (int index = 0; index < array.length(); index++) {
+                    JSONObject item = array.optJSONObject(index);
+                    if (item == null) {
+                        continue;
+                    }
+                    String id = item.optString("id").trim();
+                    String name = item.optString("name").trim();
+                    String m3u = item.optString("m3u").trim();
+                    String epg = item.optString("epg").trim();
+                    if (id.length() > 0 && name.length() > 0 && isHttpUrl(m3u)) {
+                        sources.add(new LiveSource(id, name, m3u, epg, item.optBoolean("enabled", true)));
+                    }
+                }
+            } catch (JSONException ignored) {
+            }
+            return sources;
+        }
+        String m3u = m3uUrl(context);
+        if (isHttpUrl(m3u)) {
+            sources.add(new LiveSource("legacy-import", "导入的直播源", m3u,
+                    epgUrl(context), true));
+        }
+        return sources;
+    }
+
+    static void upsertLiveSource(Context context, LiveSource source) {
+        List<LiveSource> sources = liveSources(context);
+        boolean replaced = false;
+        for (int index = 0; index < sources.size(); index++) {
+            if (sources.get(index).id.equals(source.id)) {
+                sources.set(index, source);
+                replaced = true;
+                break;
+            }
+        }
+        if (!replaced) {
+            sources.add(source);
+        }
+        saveLiveSources(context, sources);
+    }
+
+    static void deleteLiveSource(Context context, String sourceId) {
+        List<LiveSource> sources = liveSources(context);
+        for (int index = sources.size() - 1; index >= 0; index--) {
+            if (sources.get(index).id.equals(sourceId)) {
+                sources.remove(index);
+            }
+        }
+        saveLiveSources(context, sources);
+    }
+
+    private static void saveLiveSources(Context context, List<LiveSource> sources) {
+        JSONArray array = new JSONArray();
+        for (LiveSource source : sources) {
+            try {
+                JSONObject item = new JSONObject();
+                item.put("id", source.id);
+                item.put("name", source.name);
+                item.put("m3u", source.m3uUrl);
+                item.put("epg", source.epgUrl);
+                item.put("enabled", source.enabled);
+                array.put(item);
+            } catch (JSONException ignored) {
+            }
+        }
+        preferences(context).edit().putString(LIVE_SOURCES, array.toString()).apply();
+    }
+
+    static final class LiveSource {
+        final String id;
+        final String name;
+        final String m3uUrl;
+        final String epgUrl;
+        final boolean enabled;
+
+        LiveSource(String id, String name, String m3uUrl, String epgUrl, boolean enabled) {
+            this.id = id;
+            this.name = name.trim();
+            this.m3uUrl = m3uUrl.trim();
+            this.epgUrl = epgUrl.trim();
+            this.enabled = enabled;
+        }
     }
 
     static String lastChannelUrl(Context context) {
