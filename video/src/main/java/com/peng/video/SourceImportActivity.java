@@ -267,13 +267,13 @@ public final class SourceImportActivity extends Activity {
                 + "\">" + html(message) + "</p>";
         return "<!doctype html><html lang=\"zh-CN\"><meta charset=\"utf-8\">"
                 + "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-                + "<title>PENG影视 - 导入直播源</title><style>"
+                + "<title>PENG电视 - 导入直播源</title><style>"
                 + "body{margin:0;background:#101a2a;color:#eef5ff;font:16px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}"
                 + ".box{max-width:560px;margin:32px auto;padding:28px;background:#233958;border-radius:18px}"
                 + "h1{margin-top:0}label{display:block;margin:20px 0 8px}input{box-sizing:border-box;width:100%;padding:14px;border:0;border-radius:10px;font-size:16px}"
                 + "button{margin-top:24px;width:100%;padding:15px;border:0;border-radius:10px;background:#4a9ae8;color:white;font-size:17px;font-weight:bold}"
                 + ".success{color:#b8f5c8}.error{color:#ffb9b9}.tip{color:#c2d5eb;font-size:14px;line-height:1.6}</style>"
-                + "<main class=\"box\"><h1>PENG影视</h1><p class=\"tip\">电视已提供公开默认频道。可在此追加您有权使用的直播源；离开此页后，导入网页会自动关闭。</p>"
+                + "<main class=\"box\"><h1>PENG电视</h1><p class=\"tip\">电视已提供公开默认频道。可在此追加您有权使用的直播源；离开此页后，导入网页会自动关闭。</p>"
                 + notice + "<form method=\"post\"><label>追加 M3U 播放列表地址（可选）</label>"
                 + "<input name=\"m3u\" type=\"url\" value=\"" + currentM3u + "\" placeholder=\"https://example.com/playlist.m3u\">"
                 + "<label>XMLTV 节目单地址（可选）</label><input name=\"epg\" type=\"url\" value=\"" + currentEpg

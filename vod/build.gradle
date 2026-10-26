@@ -1,0 +1,59 @@
+plugins {
+    id "com.android.application"
+}
+
+def signingProperties = new Properties()
+def signingPropertiesFile = rootProject.file("keystore.properties")
+if (signingPropertiesFile.isFile()) {
+    signingPropertiesFile.withInputStream { signingProperties.load(it) }
+}
+def hasReleaseSigning = ["storeFile", "storePassword", "keyAlias", "keyPassword"]
+        .every { signingProperties.getProperty(it) }
+
+android {
+    namespace "com.peng.vod"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.peng.vod"
+        minSdk 19
+        targetSdk 35
+        versionCode 1
+        versionName "0.1.0"
+    }
+
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile rootProject.file(signingProperties.getProperty("storeFile"))
+                storePassword signingProperties.getProperty("storePassword")
+                keyAlias signingProperties.getProperty("keyAlias")
+                keyPassword signingProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+}
+
+def appVersionName = android.defaultConfig.versionName
+
+dependencies {
+    implementation "com.google.android.exoplayer:exoplayer-core:2.18.7"
+    implementation "com.google.android.exoplayer:exoplayer-hls:2.18.7"
+    implementation "com.google.android.exoplayer:exoplayer-ui:2.18.7"
+}
+
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        variant.outputs.forEach { output ->
+            output.outputFileName.set("PENG-VOD-v${appVersionName}-${variant.name}.apk")
+        }
+    }
+}

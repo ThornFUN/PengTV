@@ -53,7 +53,7 @@ dependencies {
 androidComponents {
     onVariants(selector().all()) { variant ->
         variant.outputs.forEach { output ->
-            output.outputFileName.set("PENG-Video-v${appVersionName}-${variant.name}.apk")
+            output.outputFileName.set("PENG-TV-v${appVersionName}-${variant.name}.apk")
         }
     }
 }

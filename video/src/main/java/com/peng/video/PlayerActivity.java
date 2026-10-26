@@ -260,7 +260,7 @@ public final class PlayerActivity extends Activity {
             return;
         }
         lastBackPressedAt = now;
-        Toast.makeText(this, "再按一次返回退出 PENG影视", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "再按一次返回退出 PENG电视", Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -300,7 +300,7 @@ public final class PlayerActivity extends Activity {
         currentUrls = channel == null ? Collections.singletonList(url) : preferredUrls(channel);
         currentUrlIndex = 0;
         currentUrl = currentUrls.get(currentUrlIndex);
-        title.setText(name == null ? "PENG影视" : name);
+        title.setText(name == null ? "PENG电视" : name);
         channelNumber.setText(String.format(Locale.US, "%03d", currentIndex + 1));
         showChannelOverlay();
         VideoPreferences.saveLastChannelUrl(this, url);

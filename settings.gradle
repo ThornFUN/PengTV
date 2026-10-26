@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 rootProject.name = "PengLauncher"
 include(":app")
 include(":video")
+include(":vod")

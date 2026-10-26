@@ -103,7 +103,7 @@ public final class VideoMainActivity extends Activity {
 
         LinearLayout header = new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        TextView title = text("PENG影视", 30, Color.WHITE);
+        TextView title = text("PENG电视", 30, Color.WHITE);
         header.addView(title, new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f));
         sourceSettings = action("源设置");
