@@ -36,8 +36,12 @@ final class VideoPreferences {
     }
 
     static void save(Context context, String m3uUrl, String epgUrl) {
-        upsertLiveSource(context, new LiveSource("legacy-import", "导入的直播源",
-                m3uUrl, epgUrl, true));
+        if (isHttpUrl(m3uUrl)) {
+            upsertLiveSource(context, new LiveSource("legacy-import", "导入的直播源",
+                    m3uUrl, epgUrl, true));
+        } else {
+            deleteLiveSource(context, "legacy-import");
+        }
     }
 
     static List<LiveSource> liveSources(Context context) {

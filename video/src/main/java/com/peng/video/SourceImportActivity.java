@@ -64,12 +64,12 @@ public final class SourceImportActivity extends Activity {
 
         root.addView(label("追加 M3U 播放列表地址（可选）"));
         m3uInput = input("https://example.com/playlist.m3u");
-        m3uInput.setText(VideoPreferences.m3uUrl(this));
+        m3uInput.setText(importedM3uUrl());
         root.addView(m3uInput, fieldParams());
 
         root.addView(label("XMLTV 节目单地址（可选）"));
         epgInput = input("https://example.com/guide.xml");
-        epgInput.setText(VideoPreferences.epgUrl(this));
+        epgInput.setText(importedEpgUrl());
         root.addView(epgInput, fieldParams());
 
         LinearLayout actions = new LinearLayout(this);
@@ -266,8 +266,8 @@ public final class SourceImportActivity extends Activity {
     }
 
     private String page(boolean saved, String message) {
-        String currentM3u = html(VideoPreferences.m3uUrl(this));
-        String currentEpg = html(VideoPreferences.epgUrl(this));
+        String currentM3u = html(importedM3uUrl());
+        String currentEpg = html(importedEpgUrl());
         String notice = message.length() == 0 ? "" : "<p class=\"" + (saved ? "success" : "error")
                 + "\">" + html(message) + "</p>";
         return "<!doctype html><html lang=\"zh-CN\"><meta charset=\"utf-8\">"
@@ -356,6 +356,25 @@ public final class SourceImportActivity extends Activity {
     private String value(Map<String, String> values, String key) {
         String value = values.get(key);
         return value == null ? "" : value.trim();
+    }
+
+    private String importedM3uUrl() {
+        VideoPreferences.LiveSource source = importedSource();
+        return source == null ? "" : source.m3uUrl;
+    }
+
+    private String importedEpgUrl() {
+        VideoPreferences.LiveSource source = importedSource();
+        return source == null ? "" : source.epgUrl;
+    }
+
+    private VideoPreferences.LiveSource importedSource() {
+        for (VideoPreferences.LiveSource source : VideoPreferences.liveSources(this)) {
+            if ("legacy-import".equals(source.id)) {
+                return source;
+            }
+        }
+        return null;
     }
 
     private String localIpAddress() {

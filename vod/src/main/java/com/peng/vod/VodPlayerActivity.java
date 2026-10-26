@@ -91,6 +91,14 @@ public final class VodPlayerActivity extends Activity {
     }
 
     @Override
+    protected void onStart() {
+        super.onStart();
+        if (player != null) {
+            player.play();
+        }
+    }
+
+    @Override
     protected void onDestroy() {
         if (player != null) {
             player.release();

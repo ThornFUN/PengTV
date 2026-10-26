@@ -149,6 +149,14 @@ public final class LineSelectionActivity extends Activity {
     }
 
     @Override
+    protected void onStart() {
+        super.onStart();
+        if (previewPlayer != null && previewUrl != null) {
+            previewPlayer.play();
+        }
+    }
+
+    @Override
     protected void onDestroy() {
         if (previewPlayer != null) {
             previewPlayer.release();

@@ -61,6 +61,7 @@ public final class VideoMainActivity extends Activity {
     private String selectedCategory;
     private int focusedChannelIndex = -1;
     private boolean initialLoad = true;
+    private int loadGeneration;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -146,6 +147,7 @@ public final class VideoMainActivity extends Activity {
     }
 
     private void reloadChannels(final boolean autoPlayLastChannel) {
+        final int generation = ++loadGeneration;
         status.setText("正在加载频道和节目单...");
         channelList.removeAllViews();
         new Thread(new Runnable() {
@@ -158,7 +160,9 @@ public final class VideoMainActivity extends Activity {
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            showEmpty("内置频道配置读取失败。");
+                            if (generation == loadGeneration && !isFinishing()) {
+                                showEmpty("内置频道配置读取失败。");
+                            }
                         }
                     });
                     return;
@@ -189,8 +193,10 @@ public final class VideoMainActivity extends Activity {
                 mainHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        showChannels(channels, guide, hasSourceFailure, defaultChannelCount,
-                                autoPlayLastChannel);
+                        if (generation == loadGeneration && !isFinishing()) {
+                            showChannels(channels, guide, hasSourceFailure, defaultChannelCount,
+                                    autoPlayLastChannel);
+                        }
                     }
                 });
             }
