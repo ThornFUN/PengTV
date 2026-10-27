@@ -90,7 +90,12 @@ public class ModelSettingFragment extends BaseLazyFragment {
         tvParseWebView.setText(Hawk.get(HawkConfig.PARSE_WEBVIEW, true) ? "系统自带" : "XWalkView");
         tvApi.setText(Hawk.get(HawkConfig.API_URL, ""));
         tvDns.setText(OkGoHelper.dnsHttpsList.get(Hawk.get(HawkConfig.DOH_URL, 0)));
-        tvHomeRec.setText(getHomeRecName(Hawk.get(HawkConfig.HOME_REC, 0)));
+        int homeRec = Hawk.get(HawkConfig.HOME_REC, 1);
+        if (homeRec == 0) {
+            homeRec = 1;
+            Hawk.put(HawkConfig.HOME_REC, homeRec);
+        }
+        tvHomeRec.setText(getHomeRecName(homeRec));
         tvSearchView.setText(getSearchView(Hawk.get(HawkConfig.SEARCH_VIEW, 0)));
         tvHomeApi.setText(ApiConfig.get().getHomeSourceBean().getName());
         tvScale.setText(PlayerHelper.getScaleName(Hawk.get(HawkConfig.PLAY_SCALE, 0)));
@@ -167,33 +172,39 @@ public class ModelSettingFragment extends BaseLazyFragment {
             public void onClick(View v) {
                 FastClickCheckUtil.check(v);
                 List<SourceBean> sites = ApiConfig.get().getSourceBeanList();
-                if (sites.size() > 0) {
-                    SelectDialog<SourceBean> dialog = new SelectDialog<>(mActivity);
-                    dialog.setTip("请选择首页数据源");
-                    dialog.setAdapter(new SelectDialogAdapter.SelectDialogInterface<SourceBean>() {
-                        @Override
-                        public void click(SourceBean value, int pos) {
-                            ApiConfig.get().setSourceBean(value);
-                            tvHomeApi.setText(ApiConfig.get().getHomeSourceBean().getName());
-                        }
-
-                        @Override
-                        public String getDisplay(SourceBean val) {
-                            return val.getName();
-                        }
-                    }, new DiffUtil.ItemCallback<SourceBean>() {
-                        @Override
-                        public boolean areItemsTheSame(@NonNull @NotNull SourceBean oldItem, @NonNull @NotNull SourceBean newItem) {
-                            return oldItem == newItem;
-                        }
-
-                        @Override
-                        public boolean areContentsTheSame(@NonNull @NotNull SourceBean oldItem, @NonNull @NotNull SourceBean newItem) {
-                            return oldItem.getKey().equals(newItem.getKey());
-                        }
-                    }, sites, sites.indexOf(ApiConfig.get().getHomeSourceBean()));
-                    dialog.show();
+                if (sites.isEmpty()) {
+                    String apiUrl = Hawk.get(HawkConfig.API_URL, "");
+                    String message = apiUrl.isEmpty()
+                            ? "请先配置地址，再选择首页数据源"
+                            : "当前配置没有可用首页数据源，请检查配置地址";
+                    Toast.makeText(mContext, message, Toast.LENGTH_LONG).show();
+                    return;
                 }
+                SelectDialog<SourceBean> dialog = new SelectDialog<>(mActivity);
+                dialog.setTip("请选择首页数据源");
+                dialog.setAdapter(new SelectDialogAdapter.SelectDialogInterface<SourceBean>() {
+                    @Override
+                    public void click(SourceBean value, int pos) {
+                        ApiConfig.get().setSourceBean(value);
+                        tvHomeApi.setText(ApiConfig.get().getHomeSourceBean().getName());
+                    }
+
+                    @Override
+                    public String getDisplay(SourceBean val) {
+                        return val.getName();
+                    }
+                }, new DiffUtil.ItemCallback<SourceBean>() {
+                    @Override
+                    public boolean areItemsTheSame(@NonNull @NotNull SourceBean oldItem, @NonNull @NotNull SourceBean newItem) {
+                        return oldItem == newItem;
+                    }
+
+                    @Override
+                    public boolean areContentsTheSame(@NonNull @NotNull SourceBean oldItem, @NonNull @NotNull SourceBean newItem) {
+                        return oldItem.getKey().equals(newItem.getKey());
+                    }
+                }, sites, sites.indexOf(ApiConfig.get().getHomeSourceBean()));
+                dialog.show();
             }
         });
         findViewById(R.id.llDns).setOnClickListener(new View.OnClickListener() {
@@ -415,13 +426,16 @@ public class ModelSettingFragment extends BaseLazyFragment {
             @Override
             public void onClick(View v) {
                 FastClickCheckUtil.check(v);
-                int defaultPos = Hawk.get(HawkConfig.HOME_REC, 0);
+                int defaultPos = Hawk.get(HawkConfig.HOME_REC, 1);
+                if (defaultPos == 0) {
+                    defaultPos = 1;
+                }
                 ArrayList<Integer> types = new ArrayList<>();
-                types.add(0);
                 types.add(1);
                 types.add(2);
+                int selectedIndex = types.indexOf(defaultPos);
                 SelectDialog<Integer> dialog = new SelectDialog<>(mActivity);
-                dialog.setTip("请选择首页列表数据");
+                dialog.setTip("请选择首页内容");
                 dialog.setAdapter(new SelectDialogAdapter.SelectDialogInterface<Integer>() {
                     @Override
                     public void click(Integer value, int pos) {
@@ -443,7 +457,7 @@ public class ModelSettingFragment extends BaseLazyFragment {
                     public boolean areContentsTheSame(@NonNull @NotNull Integer oldItem, @NonNull @NotNull Integer newItem) {
                         return oldItem.intValue() == newItem.intValue();
                     }
-                }, types, defaultPos);
+                }, types, selectedIndex);
                 dialog.show();
             }
         });
@@ -499,10 +513,8 @@ public class ModelSettingFragment extends BaseLazyFragment {
     String getHomeRecName(int type) {
         if (type == 1) {
             return "站点推荐";
-        } else if (type == 2) {
-            return "观看历史";
         } else {
-            return "豆瓣热播";
+            return "观看历史";
         }
     }
 

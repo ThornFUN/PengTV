@@ -1,6 +1,7 @@
 package com.github.tvbox.osc.ui.dialog;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.view.View;
 import android.widget.EditText;
@@ -76,8 +77,10 @@ public class ApiDialog extends BaseDialog {
             @Override
             public void onClick(View v) {
                 ArrayList<String> history = Hawk.get(HawkConfig.API_HISTORY, new ArrayList<String>());
-                if (history.isEmpty())
+                if (history.isEmpty()) {
+                    Toast.makeText(getContext(), "暂无配置历史，请先保存一个配置地址", Toast.LENGTH_LONG).show();
                     return;
+                }
                 String current = Hawk.get(HawkConfig.API_URL, "");
                 int idx = 0;
                 if (history.contains(current))
@@ -106,30 +109,39 @@ public class ApiDialog extends BaseDialog {
                 if (XXPermissions.isGranted(getContext(), Permission.Group.STORAGE)) {
                     Toast.makeText(getContext(), "已获得存储权限", Toast.LENGTH_SHORT).show();
                 } else {
-                    XXPermissions.with(getContext())
-                            .permission(Permission.Group.STORAGE)
-                            .request(new OnPermissionCallback() {
-                                @Override
-                                public void onGranted(List<String> permissions, boolean all) {
-                                    if (all) {
-                                        Toast.makeText(getContext(), "已获得存储权限", Toast.LENGTH_SHORT).show();
-                                    }
-                                }
-
-                                @Override
-                                public void onDenied(List<String> permissions, boolean never) {
-                                    if (never) {
-                                        Toast.makeText(getContext(), "获取存储权限失败,请在系统设置中开启", Toast.LENGTH_SHORT).show();
-                                        XXPermissions.startPermissionActivity((Activity) getContext(), permissions);
-                                    } else {
-                                        Toast.makeText(getContext(), "获取存储权限失败", Toast.LENGTH_SHORT).show();
-                                    }
-                                }
-                            });
+                    new AlertDialog.Builder(getContext())
+                            .setTitle("需要存储权限")
+                            .setMessage("用于读取本地配置文件，以及通过手机浏览器上传配置文件。不会访问或上传其他文件。")
+                            .setNegativeButton("暂不授权", null)
+                            .setPositiveButton("去授权", (dialog, which) -> requestStoragePermission())
+                            .show();
                 }
             }
         });
         refreshQRCode();
+    }
+
+    private void requestStoragePermission() {
+        XXPermissions.with(getContext())
+                .permission(Permission.Group.STORAGE)
+                .request(new OnPermissionCallback() {
+                    @Override
+                    public void onGranted(List<String> permissions, boolean all) {
+                        if (all) {
+                            Toast.makeText(getContext(), "已获得存储权限", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onDenied(List<String> permissions, boolean never) {
+                        if (never) {
+                            Toast.makeText(getContext(), "获取存储权限失败,请在系统设置中开启", Toast.LENGTH_SHORT).show();
+                            XXPermissions.startPermissionActivity((Activity) getContext(), permissions);
+                        } else {
+                            Toast.makeText(getContext(), "获取存储权限失败", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
     }
 
     private void refreshQRCode() {
