@@ -2,6 +2,7 @@ package com.github.tvbox.osc.ui.dialog;
 
 import android.app.Activity;
 import android.content.Context;
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -15,7 +16,9 @@ import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.server.ControlManager;
 import com.github.tvbox.osc.ui.activity.HomeActivity;
 import com.github.tvbox.osc.ui.adapter.ApiHistoryDialogAdapter;
+import com.github.tvbox.osc.ui.adapter.BuiltInSourceAdapter;
 import com.github.tvbox.osc.ui.tv.QRCodeGen;
+import com.github.tvbox.osc.util.BuiltInSourceRepository;
 import com.github.tvbox.osc.util.DefaultConfig;
 import com.github.tvbox.osc.util.HawkConfig;
 import com.hjq.permissions.OnPermissionCallback;
@@ -153,6 +156,12 @@ public class ApiDialog extends BaseDialog {
                 dialog.show();
             }
         });
+        findViewById(R.id.apiBuiltIn).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showBuiltInConfigSources();
+            }
+        });
         findViewById(R.id.liveHistory).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -179,6 +188,12 @@ public class ApiDialog extends BaseDialog {
                     }
                 }, liveHistory, idx);
                 dialog.show();
+            }
+        });
+        findViewById(R.id.liveBuiltIn).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showBuiltInLiveSources();
             }
         });
         findViewById(R.id.EPGHistory).setOnClickListener(new View.OnClickListener() {
@@ -239,6 +254,59 @@ public class ApiDialog extends BaseDialog {
             }
         });
         refreshQRCode();
+    }
+
+    private void showBuiltInConfigSources() {
+        try {
+            List<BuiltInSourceRepository.Source> sources = BuiltInSourceRepository.getConfigSources(getContext());
+            BuiltInSourceDialog dialog = new BuiltInSourceDialog(getContext());
+            dialog.setSources("内置影视配置", sources, inputApi.getText().toString().trim(), new BuiltInSourceAdapter.OnSourceClickListener() {
+                @Override
+                public void onClick(BuiltInSourceRepository.Source source) {
+                    inputApi.setText(source.url);
+                    addToHistory(HawkConfig.API_HISTORY, source.url);
+                    if (listener != null) {
+                        listener.onchange(source.url);
+                    }
+                    dialog.dismiss();
+                }
+            });
+            dialog.show();
+        } catch (Exception e) {
+            Log.e("ApiDialog", "Failed to read built-in config sources", e);
+            Toast.makeText(getContext(), "内置影视配置读取失败", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showBuiltInLiveSources() {
+        try {
+            List<BuiltInSourceRepository.Source> sources = BuiltInSourceRepository.getLiveSources(getContext());
+            BuiltInSourceDialog dialog = new BuiltInSourceDialog(getContext());
+            dialog.setSources("内置直播源", sources, inputLive.getText().toString().trim(), new BuiltInSourceAdapter.OnSourceClickListener() {
+                @Override
+                public void onClick(BuiltInSourceRepository.Source source) {
+                    inputLive.setText(source.url);
+                    Hawk.put(HawkConfig.LIVE_URL, source.url);
+                    addToHistory(HawkConfig.LIVE_HISTORY, source.url);
+                    dialog.dismiss();
+                }
+            });
+            dialog.show();
+        } catch (Exception e) {
+            Log.e("ApiDialog", "Failed to read built-in live sources", e);
+            Toast.makeText(getContext(), "内置直播源读取失败", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void addToHistory(String key, String url) {
+        ArrayList<String> history = Hawk.get(key, new ArrayList<String>());
+        if (!history.contains(url)) {
+            history.add(0, url);
+        }
+        if (history.size() > 20) {
+            history.remove(20);
+        }
+        Hawk.put(key, history);
     }
 
     private void refreshQRCode() {

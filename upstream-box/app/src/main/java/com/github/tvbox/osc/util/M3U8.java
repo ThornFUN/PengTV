@@ -2,6 +2,8 @@ package com.github.tvbox.osc.util;
 
 import static com.github.tvbox.osc.util.RegexUtils.getPattern;
 
+import android.text.TextUtils;
+
 import com.google.android.exoplayer2.util.UriUtil;
 
 import com.github.tvbox.osc.base.App;
@@ -210,7 +212,7 @@ public class M3U8 {
             }
         }
 //        ToastHelper.showToast(App.getInstance(), "已移除视频广告");
-        return String.join(linesplit, lines);
+        return TextUtils.join(linesplit, lines);
     }
 
     private static String get(String tsUrlPre, String m3u8Content) {

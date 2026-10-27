@@ -1,8 +1,5 @@
 package com.github.tvbox.osc.ui.activity;
 
-import android.app.PendingIntent;
-import android.app.PictureInPictureParams;
-import android.app.RemoteAction;
 import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -11,12 +8,10 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Paint;
-import android.graphics.drawable.Icon;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.Html;
 import android.text.TextUtils;
-import android.util.Rational;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,7 +21,6 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.RequiresApi;
 import androidx.fragment.app.FragmentContainerView;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
@@ -1122,64 +1116,6 @@ public class DetailActivity extends BaseActivity {
         if (!showPreview) Thunder.stop(true);
     }
 
-    @Override
-    public void onUserLeaveHint() {
-        // takagen99 : Additional check for external player
-        if (supportsPiPMode() && showPreview && !playFragment.extPlay && Hawk.get(HawkConfig.BACKGROUND_PLAY_TYPE, 0) == 2) {
-            // 创建一个Intent对象，模拟按下Home键
-            try { //部分电视使用该方法启动首页闪退比如小米的澎湃OS
-                Intent intent = new Intent(Intent.ACTION_MAIN);
-                intent.addCategory(Intent.CATEGORY_HOME);
-                startActivity(intent);
-            } catch (SecurityException e) {
-                e.printStackTrace();
-                ToastUtils.showShort("画中画 开启失败!");
-                return;
-            }
-            // Calculate Video Resolution
-            int vWidth = playFragment.mVideoView.getVideoSize()[0];
-            int vHeight = playFragment.mVideoView.getVideoSize()[1];
-            Rational ratio = null;
-            if (vWidth != 0) {
-                if ((((double) vWidth) / ((double) vHeight)) > 2.39) {
-                    vHeight = (int) (((double) vWidth) / 2.35);
-                }
-                ratio = new Rational(vWidth, vHeight);
-            } else {
-                ratio = new Rational(16, 9);
-            }
-            List<RemoteAction> actions = new ArrayList<>();
-            actions.add(generateRemoteAction(android.R.drawable.ic_media_previous, BROADCAST_ACTION_PREV, "Prev", "Play Previous"));
-            actions.add(generateRemoteAction(android.R.drawable.ic_media_play, BROADCAST_ACTION_PLAYPAUSE, "Play", "Play/Pause"));
-            actions.add(generateRemoteAction(android.R.drawable.ic_media_next, BROADCAST_ACTION_NEXT, "Next", "Play Next"));
-            PictureInPictureParams params = new PictureInPictureParams.Builder()
-                    .setAspectRatio(ratio)
-                    .setActions(actions).build();
-            if (!fullWindows) {
-                toggleFullPreview();
-            }
-            enterPictureInPictureMode(params);
-            playFragment.getVodController().hideBottom();
-            playFragment.getPlayer().postDelayed(() -> {
-                if (!playFragment.getPlayer().isPlaying()) {
-                    playFragment.getVodController().togglePlay();
-                }
-            }, 400);
-        }
-    }
-
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    private RemoteAction generateRemoteAction(int iconResId, int actionCode, String title, String desc) {
-        final PendingIntent intent =
-                PendingIntent.getBroadcast(
-                        DetailActivity.this,
-                        actionCode,
-                        new Intent(BROADCAST_ACTION).putExtra("action", actionCode),
-                        0);
-        final Icon icon = Icon.createWithResource(DetailActivity.this, iconResId);
-        return (new RemoteAction(icon, title, desc, intent));
-    }
-
     /**
      * 事件接收广播(画中画/后台播放点击事件)
      *
@@ -1216,12 +1152,6 @@ public class DetailActivity extends BaseActivity {
                 playFragment.getVodController().togglePlay();
             }
         }
-    }
-
-    @Override
-    public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode) {
-        super.onPictureInPictureModeChanged(isInPictureInPictureMode);
-        registerActionReceiver(supportsPiPMode() && isInPictureInPictureMode);
     }
 
     /**

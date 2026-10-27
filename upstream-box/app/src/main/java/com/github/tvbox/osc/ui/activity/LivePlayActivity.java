@@ -346,20 +346,6 @@ public class LivePlayActivity extends BaseActivity {
         });
     }
 
-    boolean PiPON = Hawk.get(HawkConfig.BACKGROUND_PLAY_TYPE, 0) == 2;
-
-    // takagen99 : Enter PIP if supported
-    @Override
-    public void onUserLeaveHint() {
-        if (supportsPiPMode() && PiPON) {
-            // Hide controls when entering PIP
-            mHandler.post(mHideChannelListRun);
-            mHandler.post(mHideChannelInfoRun);
-            mHandler.post(mHideSettingLayoutRun);
-            enterPictureInPictureMode();
-        }
-    }
-
     @Override
     public void onBackPressed() {
         if (tvLeftChannelListLayout.getVisibility() == View.VISIBLE) {
@@ -487,9 +473,6 @@ public class LivePlayActivity extends BaseActivity {
         return super.dispatchKeyEvent(event);
     }
 
-    // takagen99 : Use onStopCalled to track close activity
-    private boolean onStopCalled;
-
     @Override
     protected void onResume() {
         super.onResume();
@@ -499,40 +482,10 @@ public class LivePlayActivity extends BaseActivity {
     }
 
     @Override
-    protected void onStop() {
-        super.onStop();
-        onStopCalled = true;
-    }
-
-    @Override
     protected void onPause() {
         super.onPause();
         if (mVideoView != null) {
-            if (supportsPiPMode()) {
-                if (isInPictureInPictureMode()) {
-                    // Continue playback
-                    mVideoView.resume();
-                } else {
-                    // Pause playback
-                    mVideoView.pause();
-                }
-            } else {
-                mVideoView.pause();
-            }
-        }
-    }
-
-    // takagen99 : PIP fix to close video when close window
-    @Override
-    public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode) {
-        super.onPictureInPictureModeChanged(isInPictureInPictureMode);
-        if (supportsPiPMode()) {
-            if (!isInPictureInPictureMode()) {
-                // Closed playback
-                if (onStopCalled) {
-                    mVideoView.release();
-                }
-            }
+            mVideoView.pause();
         }
     }
 

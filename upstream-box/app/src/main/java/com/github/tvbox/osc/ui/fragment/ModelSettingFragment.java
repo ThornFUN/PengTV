@@ -410,14 +410,18 @@ public class ModelSettingFragment extends BaseLazyFragment {
         View backgroundPlay = findViewById(R.id.llBackgroundPlay);
         TextView tvBgPlayType = findViewById(R.id.tvBackgroundPlayType);
         Integer defaultBgPlayTypePos = Hawk.get(HawkConfig.BACKGROUND_PLAY_TYPE, 0);
+        if (defaultBgPlayTypePos > 1) {
+            defaultBgPlayTypePos = 0;
+            Hawk.put(HawkConfig.BACKGROUND_PLAY_TYPE, defaultBgPlayTypePos);
+        }
         ArrayList<String> bgPlayTypes = new ArrayList<>();
         bgPlayTypes.add("关闭");
         bgPlayTypes.add("开启");
-        bgPlayTypes.add("画中画");
         tvBgPlayType.setText(bgPlayTypes.get(defaultBgPlayTypePos));
         backgroundPlay.setOnClickListener(view -> {
             FastClickCheckUtil.check(view);
             int bgPlayTypePos = Hawk.get(HawkConfig.BACKGROUND_PLAY_TYPE, 0);
+            if (bgPlayTypePos > 1) bgPlayTypePos = 0;
             SelectDialog<String> dialog = new SelectDialog<>(mActivity);
             dialog.setTip("请选择");
             dialog.setAdapter(null, new SelectDialogAdapter.SelectDialogInterface<String>() {

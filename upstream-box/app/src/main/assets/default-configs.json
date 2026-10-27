@@ -1,0 +1,223 @@
+{
+  "version": 1,
+  "configs": [
+    {
+      "id": "fantayhard",
+      "name": "饭太硬",
+      "url": "http://www.饭太硬.net/tv",
+      "description": "饭太硬接口",
+      "group": "single",
+      "default": true
+    },
+    {
+      "id": "feimao",
+      "name": "肥猫",
+      "url": "http://肥猫.net",
+      "description": "肥猫接口",
+      "group": "single"
+    },
+    {
+      "id": "moyuer",
+      "name": "摸鱼儿",
+      "url": "http://我不是.摸鱼儿.top",
+      "description": "摸鱼儿接口",
+      "group": "single"
+    },
+    {
+      "id": "wangxiaoniu",
+      "name": "王小二放牛娃",
+      "url": "http://tvbox.王二小放牛娃.top",
+      "description": "王小二放牛娃接口",
+      "group": "single"
+    },
+    {
+      "id": "wangxiaoniu-new",
+      "name": "王小二放牛娃（新）",
+      "url": "https://9280.kstore.vip/newwex.json",
+      "description": "王小二放牛娃新接口",
+      "group": "single"
+    },
+    {
+      "id": "hajimi",
+      "name": "哈基米",
+      "url": "https://17264.kstore.space/哈基米.png",
+      "description": "哈基米",
+      "group": "single"
+    },
+    {
+      "id": "dongmancheng",
+      "name": "动漫城",
+      "url": "https://www.yingm.cc/dm/dm.json",
+      "description": "动漫城接口",
+      "group": "single"
+    },
+    {
+      "id": "junlao",
+      "name": "俊佬",
+      "url": "http://home.jundie.top:81/top98.json",
+      "description": "俊佬接口",
+      "group": "single"
+    },
+    {
+      "id": "daozhang",
+      "name": "道长",
+      "url": "https://cdn.gitmirror.com/bb/xduo/libs/master/index.json",
+      "description": "道长接口",
+      "group": "single"
+    },
+    {
+      "id": "nanfeng",
+      "name": "南风",
+      "url": "https://raw.githubusercontent.com/yoursmile66/TVBox/main/XC.json",
+      "description": "南风接口",
+      "group": "single"
+    },
+    {
+      "id": "cainisi",
+      "name": "菜妮丝",
+      "url": "https://tv.菜妮丝.top",
+      "description": "菜妮丝接口",
+      "group": "single"
+    },
+    {
+      "id": "hg",
+      "name": "HG",
+      "url": "https://api.hgyx.vip/hgyx.json",
+      "description": "HG接口",
+      "group": "single"
+    },
+    {
+      "id": "dxawi",
+      "name": "dxawi",
+      "url": "https://dxawi.github.io/0/0.json",
+      "description": "dxawi",
+      "group": "single"
+    },
+    {
+      "id": "xiaohazi",
+      "name": "小盒子",
+      "url": "http://xhztv.top/xhz",
+      "description": "小盒子单仓",
+      "group": "single"
+    },
+    {
+      "id": "xiaohazi-4k",
+      "name": "小盒子 4K",
+      "url": "http://xhztv.top/4k.json",
+      "description": "小盒子 4K",
+      "group": "single"
+    },
+    {
+      "id": "xiangyaqing",
+      "name": "香雅情",
+      "url": "https://raw.githubusercontent.com/xyq254245/xyqonlinerule/main/XYQTVBox.json",
+      "description": "香雅情",
+      "group": "single"
+    },
+    {
+      "id": "baohe-vip",
+      "name": "宝盒 VIP",
+      "url": "https://raw.githubusercontent.com/guot55/YGBH/main/vip2.json",
+      "description": "宝盒VIP",
+      "group": "single"
+    },
+    {
+      "id": "zhenxin",
+      "name": "真心",
+      "url": "https://www.252035.xyz/z/FongMi.json",
+      "description": "真心",
+      "group": "single"
+    },
+    {
+      "id": "gaotianliuyun",
+      "name": "高天流云",
+      "url": "https://raw.githubusercontent.com/gaotianliuyun/gao/master/js.json",
+      "description": "高天流云",
+      "group": "single"
+    },
+    {
+      "id": "fenxiang",
+      "name": "分享",
+      "url": "https://raw.githubusercontent.com/maoystv/6/main/000.json",
+      "description": "分享",
+      "group": "single"
+    },
+    {
+      "id": "duanju",
+      "name": "短剧",
+      "url": "http://box.ufuzi.com/tv/qq/短剧频道/api.json",
+      "description": "短剧频道",
+      "group": "single"
+    },
+    {
+      "id": "dongli",
+      "name": "东篱",
+      "url": "https://raw.githubusercontent.com/chitue/dongliTV/main/api.json",
+      "description": "东篱线路",
+      "group": "single"
+    },
+    {
+      "id": "aowu",
+      "name": "嗷呜",
+      "url": "https://9763.kstore.vip/aowu.json",
+      "description": "嗷呜线路",
+      "group": "single"
+    },
+    {
+      "id": "l-lao",
+      "name": "L佬",
+      "url": "https://android.lushunming.qzz.io/json/index.json",
+      "description": "L佬线路",
+      "group": "single"
+    },
+    {
+      "id": "apple-cms",
+      "name": "苹果 CMS",
+      "url": "https://pastebin.com/raw/gtbKvnE1",
+      "description": "苹果CMS资源站",
+      "group": "single"
+    },
+    {
+      "id": "youhun",
+      "name": "游魂",
+      "url": "https://www.iyouhun.com/tv/dc",
+      "description": "游魂多仓",
+      "group": "multi"
+    },
+    {
+      "id": "youhun-backup",
+      "name": "游魂（备）",
+      "url": "https://www.iyouhun.com/tv/yh",
+      "description": "游魂多仓（备）",
+      "group": "multi"
+    },
+    {
+      "id": "xiaosa",
+      "name": "潇洒",
+      "url": "https://9877.kstore.space/AnotherDS/api.json",
+      "description": "潇洒单仓",
+      "group": "multi"
+    },
+    {
+      "id": "xiaohazi-multi",
+      "name": "小盒子",
+      "url": "http://xhztv.top/dc/",
+      "description": "小盒子多仓",
+      "group": "multi"
+    },
+    {
+      "id": "xiaohazi-multi-backup",
+      "name": "小盒子（备）",
+      "url": "http://xhztv.top/DC.txt",
+      "description": "小盒子多仓（备）",
+      "group": "multi"
+    },
+    {
+      "id": "shiguang",
+      "name": "拾光",
+      "url": "http://xmbjm.fh4u.org/dc.txt",
+      "description": "拾光多仓",
+      "group": "multi"
+    }
+  ]
+}

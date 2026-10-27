@@ -1,0 +1,237 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "id": "youhun",
+      "name": "游魂",
+      "url": "https://www.iyouhun.com/tv/zb",
+      "description": "游魂直播源",
+      "groups": ["recommended"],
+      "default": true
+    },
+    {
+      "id": "zbds-ipv4-txt",
+      "name": "直播电视 IPv4",
+      "url": "https://live.zbds.top/tv/iptv4.txt",
+      "description": "自动扫描直播源 IPTV4",
+      "groups": ["recommended", "ipv4"]
+    },
+    {
+      "id": "migu",
+      "name": "咪咕 IPTV",
+      "url": "https://develop202.github.io/migu_video/interface.txt",
+      "description": "咪咕 IPTV",
+      "groups": ["recommended"]
+    },
+    {
+      "id": "guovin-default",
+      "name": "IPTV 默认源",
+      "url": "https://raw.githubusercontent.com/Guovin/iptv-api/gd/output/result.m3u",
+      "description": "IPTV 默认源",
+      "groups": ["recommended"]
+    },
+    {
+      "id": "guovin-ipv4",
+      "name": "IPTV IPv4",
+      "url": "https://raw.githubusercontent.com/Guovin/iptv-api/gd/output/ipv4/result.m3u",
+      "description": "IPTV IPv4",
+      "groups": ["recommended", "ipv4"]
+    },
+    {
+      "id": "guovin-ipv6",
+      "name": "IPTV IPv6",
+      "url": "https://raw.githubusercontent.com/Guovin/iptv-api/gd/output/ipv6/result.m3u",
+      "description": "IPTV IPv6",
+      "groups": ["recommended", "ipv6"]
+    },
+    {
+      "id": "myiptv-ipv4",
+      "name": "myIPTV IPv4",
+      "url": "https://raw.githubusercontent.com/suxuang/myIPTV/refs/heads/main/ipv4.m3u",
+      "description": "myIPTV IPv4",
+      "groups": ["recommended", "ipv4"]
+    },
+    {
+      "id": "myiptv-ipv6",
+      "name": "myIPTV IPv6",
+      "url": "https://raw.githubusercontent.com/suxuang/myIPTV/refs/heads/main/ipv6.m3u",
+      "description": "myIPTV IPv6",
+      "groups": ["recommended", "ipv6"]
+    },
+    {
+      "id": "zbds-ipv4-m3u",
+      "name": "直播电视 IPv4（M3U）",
+      "url": "https://live.zbds.top/tv/iptv4.m3u",
+      "description": "已带台标和 EPG",
+      "groups": ["ipv4"]
+    },
+    {
+      "id": "burningc4-ipv4",
+      "name": "BurningC4",
+      "url": "https://raw.githubusercontent.com/BurningC4/Chinese-IPTV/master/TV-IPV4.m3u",
+      "description": "BurningC4 IPv4",
+      "groups": ["ipv4"]
+    },
+    {
+      "id": "chake",
+      "name": "茶客",
+      "url": "https://raw.githubusercontent.com/vamoschuck/TV/main/M3U",
+      "description": "茶客 IPv4",
+      "groups": ["ipv4"]
+    },
+    {
+      "id": "zbds-ipv6-txt",
+      "name": "直播电视 IPv6",
+      "url": "https://live.zbds.top/tv/iptv6.txt",
+      "description": "自动扫描直播源 IPTV6",
+      "groups": ["ipv6"]
+    },
+    {
+      "id": "zbds-ipv6-m3u",
+      "name": "直播电视 IPv6（M3U）",
+      "url": "https://live.zbds.top/tv/iptv6.m3u",
+      "description": "已带台标和 EPG",
+      "groups": ["ipv6"]
+    },
+    {
+      "id": "fanmingming-ipv6",
+      "name": "范明明 IPv6",
+      "url": "https://raw.githubusercontent.com/fanmingming/live/main/tv/m3u/ipv6.m3u",
+      "description": "范明明直播源",
+      "groups": ["ipv6"]
+    },
+    {
+      "id": "fanmingming-ipv6-cn",
+      "name": "范明明 IPv6（国内镜像）",
+      "url": "https://live.fanmingming.cn/tv/m3u/ipv6.m3u",
+      "description": "范明明国内镜像加速地址",
+      "groups": ["ipv6"]
+    },
+    {
+      "id": "yuechan",
+      "name": "YueChan",
+      "url": "https://raw.githubusercontent.com/YueChan/Live/main/IPTV.m3u",
+      "description": "YueChan 直播源",
+      "groups": ["ipv6"]
+    },
+    {
+      "id": "kimentanm",
+      "name": "Kimentanm",
+      "url": "https://raw.githubusercontent.com/Kimentanm/aptv/master/m3u/iptv.m3u",
+      "description": "含部分 IPv6",
+      "groups": ["mixed"]
+    },
+    {
+      "id": "bigbiggrandg",
+      "name": "BigBigGrandG",
+      "url": "https://raw.githubusercontent.com/BigBigGrandG/IPTV-URL/release/Gather.m3u",
+      "description": "含部分 IPv6",
+      "groups": ["mixed"]
+    },
+    {
+      "id": "yang-1989",
+      "name": "YanG 集合",
+      "url": "https://raw.githubusercontent.com/YanG-1989/m3u/main/Gather.m3u",
+      "description": "含部分 IPv6",
+      "groups": ["mixed"]
+    },
+    {
+      "id": "jacktv",
+      "name": "JackTV",
+      "url": "https://php.946985.filegear-sg.me/jackTV.m3u",
+      "description": "JackTV 直播",
+      "groups": ["overseas"]
+    },
+    {
+      "id": "iptv-org",
+      "name": "IPTV-org",
+      "url": "https://iptv-org.github.io/iptv/index.m3u",
+      "description": "海外及世界各地免费电视频道",
+      "groups": ["overseas"]
+    },
+    {
+      "id": "epg-pw-cn",
+      "name": "中国大陆频道",
+      "url": "https://epg.pw/test_channels.m3u",
+      "description": "中国大陆频道",
+      "groups": ["overseas"]
+    },
+    {
+      "id": "epg-pw-hk",
+      "name": "中国香港频道",
+      "url": "https://epg.pw/test_channels_hong_kong.m3u",
+      "description": "中国香港频道",
+      "groups": ["overseas"]
+    },
+    {
+      "id": "epg-pw-mo",
+      "name": "中国澳门频道",
+      "url": "https://epg.pw/test_channels_macau.m3u",
+      "description": "中国澳门频道",
+      "groups": ["overseas"]
+    },
+    {
+      "id": "epg-pw-tw",
+      "name": "中国台湾频道",
+      "url": "https://epg.pw/test_channels_taiwan.m3u",
+      "description": "中国台湾频道",
+      "groups": ["overseas"]
+    },
+    {
+      "id": "iptv-org-tw",
+      "name": "中国台湾频道（IPTV-org）",
+      "url": "https://iptv-org.github.io/iptv/countries/tw.m3u",
+      "description": "中国台湾频道",
+      "groups": ["overseas"]
+    },
+    {
+      "id": "epg-pw-sg",
+      "name": "新加坡频道",
+      "url": "https://epg.pw/test_channels_singapore.m3u",
+      "description": "新加坡频道",
+      "groups": ["overseas"]
+    },
+    {
+      "id": "epg-pw-my",
+      "name": "马来西亚频道",
+      "url": "https://epg.pw/test_channels_malaysia.m3u",
+      "description": "马来西亚频道",
+      "groups": ["overseas"]
+    },
+    {
+      "id": "free-tv",
+      "name": "Free-TV",
+      "url": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8",
+      "description": "世界各地免费电视频道",
+      "groups": ["overseas"]
+    },
+    {
+      "id": "huya-watch-together",
+      "name": "虎牙一起看",
+      "url": "https://sub.ottiptv.cc/huyayqk.m3u",
+      "description": "虎牙一起看",
+      "groups": ["other"]
+    },
+    {
+      "id": "douyu-watch-together",
+      "name": "斗鱼一起看",
+      "url": "https://sub.ottiptv.cc/douyuyqk.m3u",
+      "description": "斗鱼一起看",
+      "groups": ["other"]
+    },
+    {
+      "id": "yy-carousel",
+      "name": "YY 轮播",
+      "url": "https://sub.ottiptv.cc/yylunbo.m3u",
+      "description": "YY轮播",
+      "groups": ["other"]
+    },
+    {
+      "id": "bilibili-live",
+      "name": "哔哩哔哩直播",
+      "url": "https://sub.ottiptv.cc/bililive.m3u",
+      "description": "哔哩哔哩直播源",
+      "groups": ["other"]
+    }
+  ]
+}

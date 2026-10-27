@@ -101,6 +101,19 @@
                                 android:src="@drawable/hm_history" />
                         </LinearLayout>
 
+                        <TextView
+                            android:id="@+id/apiBuiltIn"
+                            android:layout_width="@dimen/vs_80"
+                            android:layout_height="match_parent"
+                            android:layout_marginStart="@dimen/vs_5"
+                            android:layout_marginLeft="@dimen/vs_5"
+                            android:background="@drawable/shape_setting_model_focus"
+                            android:focusable="true"
+                            android:gravity="center"
+                            android:text="内置"
+                            android:textColor="@color/color_FFFFFF"
+                            android:textSize="@dimen/ts_18" />
+
                     </LinearLayout>
 
                     <LinearLayout
@@ -150,6 +163,19 @@
                                 android:focusable="true"
                                 android:src="@drawable/hm_history" />
                         </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/liveBuiltIn"
+                            android:layout_width="@dimen/vs_80"
+                            android:layout_height="match_parent"
+                            android:layout_marginStart="@dimen/vs_5"
+                            android:layout_marginLeft="@dimen/vs_5"
+                            android:background="@drawable/shape_setting_model_focus"
+                            android:focusable="true"
+                            android:gravity="center"
+                            android:text="内置"
+                            android:textColor="@color/color_FFFFFF"
+                            android:textSize="@dimen/ts_18" />
 
                     </LinearLayout>
 

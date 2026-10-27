@@ -252,10 +252,6 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
     }
 
     public void jumpActivity(Class<? extends BaseActivity> clazz, Bundle bundle) {
-    	if (DetailActivity.class.isAssignableFrom(clazz) && Hawk.get(HawkConfig.BACKGROUND_PLAY_TYPE, 0) == 2) {
-            //1.重新打开singleTask的页面(关闭小窗) 2.关闭画中画，重进detail再开启画中画会闪退
-            ActivityUtils.finishActivity(DetailActivity.class);
-        }
         Intent intent = new Intent(mContext, clazz);
         intent.putExtras(bundle);
         startActivity(intent);
@@ -285,10 +281,6 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
     @Override
     public boolean isBaseOnWidth() {
         return !(screenRatio >= 4.0f);
-    }
-
-    public boolean supportsPiPMode() {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O;
     }
 
     public boolean supportsTouch() {

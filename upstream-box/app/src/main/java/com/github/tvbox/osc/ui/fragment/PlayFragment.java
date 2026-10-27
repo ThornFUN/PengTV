@@ -24,7 +24,6 @@ import android.webkit.JsResult;
 import android.webkit.SslErrorHandler;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
-import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -1967,11 +1966,6 @@ public class PlayFragment extends BaseLazyFragment {
         }
 
         @Override
-        public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-            return false;
-        }
-
-        @Override
         public boolean shouldOverrideUrlLoading(WebView view, String url) {
             return false;
         }
@@ -2041,26 +2035,6 @@ public class PlayFragment extends BaseLazyFragment {
         public WebResourceResponse shouldInterceptRequest(WebView view, String url) {
 //            WebResourceResponse response = checkIsVideo(url, new HashMap<>());
             return null;
-        }
-
-        @Nullable
-        @Override
-        @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-        public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-            String url = request.getUrl().toString();
-            LOG.i("shouldInterceptRequest url:" + url);
-            HashMap<String, String> webHeaders = new HashMap<>();
-            Map<String, String> hds = request.getRequestHeaders();
-            if (hds != null && hds.keySet().size() > 0) {
-                for (String k : hds.keySet()) {
-                    if (k.equalsIgnoreCase("user-agent")
-                            || k.equalsIgnoreCase("referer")
-                            || k.equalsIgnoreCase("origin")) {
-                        webHeaders.put(k," " + hds.get(k));
-                    }
-                }
-            }
-            return checkIsVideo(url, webHeaders);
         }
 
         @Override

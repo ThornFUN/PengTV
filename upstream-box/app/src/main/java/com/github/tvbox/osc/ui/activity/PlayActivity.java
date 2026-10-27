@@ -4,14 +4,12 @@ import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.PendingIntent;
-import android.app.PictureInPictureParams;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.Color;
-import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.net.http.SslError;
 import android.os.Build;
@@ -19,7 +17,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.text.TextUtils;
-import android.util.Rational;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -30,7 +27,6 @@ import android.webkit.JsResult;
 import android.webkit.SslErrorHandler;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
-import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -42,7 +38,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import com.google.android.exoplayer2.Player;
@@ -158,7 +153,6 @@ public class PlayActivity extends BaseActivity {
     private long videoDuration = -1;
     private List<String> videoSegmentationURL = new ArrayList<>();
 
-    private BroadcastReceiver pipActionReceiver;
     public static final String BROADCAST_ACTION = "VOD_CONTROL";
     public static final int BROADCAST_ACTION_PREV = 0;
     public static final int BROADCAST_ACTION_PLAYPAUSE = 1;
@@ -1154,45 +1148,7 @@ public class PlayActivity extends BaseActivity {
         mController.setPlayerConfig(mVodPlayerCfg);
     }
 
-    // takagen99 : Add check for external players not enter PIP    
     private boolean extPlay = false;
-
-    @Override
-    public void onUserLeaveHint() {
-        if (supportsPiPMode() && !extPlay && Hawk.get(HawkConfig.BACKGROUND_PLAY_TYPE, 0) == 2) {
-            // Calculate Video Resolution
-            int vWidth = mVideoView.getVideoSize()[0];
-            int vHeight = mVideoView.getVideoSize()[1];
-            Rational ratio = null;
-            if (vWidth != 0) {
-                if ((((double) vWidth) / ((double) vHeight)) > 2.39) {
-                    vHeight = (int) (((double) vWidth) / 2.35);
-                }
-                ratio = new Rational(vWidth, vHeight);
-            } else {
-                ratio = new Rational(16, 9);
-            }
-
-            List<android.app.RemoteAction> actions = new ArrayList<>();
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                actions.add(generateRemoteAction(android.R.drawable.ic_media_previous, BROADCAST_ACTION_PREV, "Prev", "Play Previous"));
-                actions.add(generateRemoteAction(android.R.drawable.ic_media_play, BROADCAST_ACTION_PLAYPAUSE, "Play/Pause", "Play or Pause"));
-                actions.add(generateRemoteAction(android.R.drawable.ic_media_next, BROADCAST_ACTION_NEXT, "Next", "Play Next"));
-            }
-            PictureInPictureParams params = new PictureInPictureParams.Builder()
-                    .setAspectRatio(ratio)
-                    .setActions(actions).build();
-            enterPictureInPictureMode(params);
-
-            mController.hideBottom();
-            mVideoView.postDelayed(() -> {
-                if (!mVideoView.isPlaying()) {
-                    mController.togglePlay();
-                }
-            }, 400);
-        }
-        super.onUserLeaveHint();
-    }
 
     @Override
     public void onBackPressed() {
@@ -1212,22 +1168,12 @@ public class PlayActivity extends BaseActivity {
         return super.dispatchKeyEvent(event);
     }
 
-    // takagen99 : Use onStopCalled to track close activity
-    private boolean onStopCalled;
-
     @Override
     protected void onResume() {
         super.onResume();
         if (mVideoView != null) {
-            onStopCalled = false;
             mVideoView.resume();
         }
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        onStopCalled = true;
     }
 
     // takagen99
@@ -1236,52 +1182,6 @@ public class PlayActivity extends BaseActivity {
         super.onPause();
         if (mVideoView != null) {
             mVideoView.pause();
-        }
-    }
-
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    private android.app.RemoteAction generateRemoteAction(int iconResId, int actionCode, String title, String desc) {
-        final PendingIntent intent = PendingIntent.getBroadcast(
-                        PlayActivity.this,
-                        actionCode,
-                        new Intent(BROADCAST_ACTION).putExtra("action", actionCode),
-                        0);
-        final Icon icon = Icon.createWithResource(PlayActivity.this, iconResId);
-        return (new android.app.RemoteAction(icon, title, desc, intent));
-    }
-
-    // takagen99 : PIP fix to close video when close window
-    @Override
-    public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode) {
-        super.onPictureInPictureModeChanged(isInPictureInPictureMode);
-        if (supportsPiPMode() && isInPictureInPictureMode) {
-            pipActionReceiver = new BroadcastReceiver() {
-
-                @Override
-                public void onReceive(Context context, Intent intent) {
-                    if (intent == null || !intent.getAction().equals(BROADCAST_ACTION) || mController == null) {
-                        return;
-                    }
-
-                    int currentStatus = intent.getIntExtra("action", 1);
-                    if (currentStatus == BROADCAST_ACTION_PREV) {
-                        playPrevious();
-                    } else if (currentStatus == BROADCAST_ACTION_PLAYPAUSE) {
-                        mController.togglePlay();
-                    } else if (currentStatus == BROADCAST_ACTION_NEXT) {
-                        playNext(false);
-                    }
-                }
-            };
-            registerReceiver(pipActionReceiver, new IntentFilter(BROADCAST_ACTION));
-
-        } else {
-            // Closed playback
-            if (onStopCalled) {
-                mVideoView.release();
-            }
-            unregisterReceiver(pipActionReceiver);
-            pipActionReceiver = null;
         }
     }
 
@@ -2077,11 +1977,6 @@ public class PlayActivity extends BaseActivity {
         }
 
         @Override
-        public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-            return false;
-        }
-
-        @Override
         public boolean shouldOverrideUrlLoading(WebView view, String url) {
             return false;
         }
@@ -2151,26 +2046,6 @@ public class PlayActivity extends BaseActivity {
         @Override
         public WebResourceResponse shouldInterceptRequest(WebView view, String url) {
             return null;
-        }
-
-        @Nullable
-        @Override
-        @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-        public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-            String url = request.getUrl().toString();
-            LOG.i("shouldInterceptRequest url:" + url);
-            HashMap<String, String> webHeaders = new HashMap<>();
-            Map<String, String> hds = request.getRequestHeaders();
-            if (hds != null && hds.keySet().size() > 0) {
-                for (String k : hds.keySet()) {
-                    if (k.equalsIgnoreCase("user-agent")
-                            || k.equalsIgnoreCase("referer")
-                            || k.equalsIgnoreCase("origin")) {
-                        webHeaders.put(k, " " + hds.get(k));
-                    }
-                }
-            }
-            return checkIsVideo(url, webHeaders);
         }
 
         @Override
