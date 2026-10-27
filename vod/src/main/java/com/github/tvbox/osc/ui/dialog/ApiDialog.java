@@ -1,6 +1,5 @@
 package com.github.tvbox.osc.ui.dialog;
 
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.view.View;
@@ -15,9 +14,9 @@ import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.server.ControlManager;
 import com.github.tvbox.osc.ui.adapter.ApiHistoryDialogAdapter;
+import com.github.tvbox.osc.ui.adapter.SelectDialogAdapter;
 import com.github.tvbox.osc.ui.tv.QRCodeGen;
 import com.github.tvbox.osc.util.HawkConfig;
-import com.hjq.permissions.OnPermissionCallback;
 import com.hjq.permissions.Permission;
 import com.hjq.permissions.XXPermissions;
 import com.orhanobut.hawk.Hawk;
@@ -25,7 +24,10 @@ import com.orhanobut.hawk.Hawk;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 import org.jetbrains.annotations.NotNull;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -57,6 +59,22 @@ public class ApiDialog extends BaseDialog {
         tvAddress = findViewById(R.id.tvAddress);
         inputApi = findViewById(R.id.input);
         inputApi.setText(Hawk.get(HawkConfig.API_URL, ""));
+        findViewById(R.id.builtInConfigs).setOnClickListener(v -> showBuiltInConfigs());
+        findViewById(R.id.storagePermission).setOnClickListener(v -> {
+            if (XXPermissions.isGranted(getContext(), Permission.Group.STORAGE)) {
+                Toast.makeText(getContext(), "已获得存储权限", Toast.LENGTH_SHORT).show();
+            } else {
+                new AlertDialog.Builder(getContext())
+                        .setTitle("需要存储权限")
+                        .setMessage("用于读取本地配置文件，以及通过手机浏览器上传配置文件。不会访问或上传其他文件。")
+                        .setNegativeButton("暂不授权", null)
+                        .setPositiveButton("去授权", (dialog, which) -> XXPermissions.with(getContext())
+                                .permission(Permission.Group.STORAGE)
+                                .request((permissions, all) -> {
+                                }))
+                        .show();
+            }
+        });
         findViewById(R.id.inputSubmit).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -103,51 +121,85 @@ public class ApiDialog extends BaseDialog {
                 dialog.show();
             }
         });
-        findViewById(R.id.storagePermission).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (XXPermissions.isGranted(getContext(), Permission.Group.STORAGE)) {
-                    Toast.makeText(getContext(), "已获得存储权限", Toast.LENGTH_SHORT).show();
-                } else {
-                    new AlertDialog.Builder(getContext())
-                            .setTitle("需要存储权限")
-                            .setMessage("用于读取本地配置文件，以及通过手机浏览器上传配置文件。不会访问或上传其他文件。")
-                            .setNegativeButton("暂不授权", null)
-                            .setPositiveButton("去授权", (dialog, which) -> requestStoragePermission())
-                            .show();
-                }
-            }
-        });
         refreshQRCode();
-    }
-
-    private void requestStoragePermission() {
-        XXPermissions.with(getContext())
-                .permission(Permission.Group.STORAGE)
-                .request(new OnPermissionCallback() {
-                    @Override
-                    public void onGranted(List<String> permissions, boolean all) {
-                        if (all) {
-                            Toast.makeText(getContext(), "已获得存储权限", Toast.LENGTH_SHORT).show();
-                        }
-                    }
-
-                    @Override
-                    public void onDenied(List<String> permissions, boolean never) {
-                        if (never) {
-                            Toast.makeText(getContext(), "获取存储权限失败,请在系统设置中开启", Toast.LENGTH_SHORT).show();
-                            XXPermissions.startPermissionActivity((Activity) getContext(), permissions);
-                        } else {
-                            Toast.makeText(getContext(), "获取存储权限失败", Toast.LENGTH_SHORT).show();
-                        }
-                    }
-                });
     }
 
     private void refreshQRCode() {
         String address = ControlManager.get().getAddress(false);
-        tvAddress.setText(String.format("手机/电脑扫描上方二维码或者直接浏览器访问地址\n%s", address));
+        tvAddress.setText(String.format("外部导入：手机/电脑扫描二维码或浏览器访问\n%s", address));
         ivQRCode.setImageBitmap(QRCodeGen.generateBitmap(address, AutoSizeUtils.mm2px(getContext(), 300), AutoSizeUtils.mm2px(getContext(), 300)));
+    }
+
+    private void showBuiltInConfigs() {
+        List<BuiltInConfig> configs;
+        try {
+            configs = loadBuiltInConfigs();
+        } catch (Exception e) {
+            Toast.makeText(getContext(), "读取内置配置地址失败", Toast.LENGTH_LONG).show();
+            return;
+        }
+        SelectDialog<BuiltInConfig> dialog = new SelectDialog<>(getContext());
+        dialog.setTip("选择内置测试地址");
+        dialog.setAdapter(new SelectDialogAdapter.SelectDialogInterface<BuiltInConfig>() {
+            @Override
+            public void click(BuiltInConfig value, int pos) {
+                inputApi.setText(value.url);
+                listener.onchange(value.url);
+                dialog.dismiss();
+                dismiss();
+            }
+
+            @Override
+            public String getDisplay(BuiltInConfig value) {
+                return value.name + "\n" + value.url;
+            }
+        }, new androidx.recyclerview.widget.DiffUtil.ItemCallback<BuiltInConfig>() {
+            @Override
+            public boolean areItemsTheSame(@NonNull BuiltInConfig oldItem, @NonNull BuiltInConfig newItem) {
+                return oldItem.url.equals(newItem.url);
+            }
+
+            @Override
+            public boolean areContentsTheSame(@NonNull BuiltInConfig oldItem, @NonNull BuiltInConfig newItem) {
+                return oldItem.name.equals(newItem.name) && oldItem.url.equals(newItem.url);
+            }
+        }, configs, getBuiltInConfigPosition(configs));
+        dialog.show();
+    }
+
+    private int getBuiltInConfigPosition(List<BuiltInConfig> configs) {
+        String currentUrl = Hawk.get(HawkConfig.API_URL, "");
+        for (int i = 0; i < configs.size(); i++) {
+            if (configs.get(i).url.equals(currentUrl)) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    private List<BuiltInConfig> loadBuiltInConfigs() throws Exception {
+        InputStream input = getContext().getAssets().open("default-configs.json");
+        byte[] bytes = new byte[input.available()];
+        int read = input.read(bytes);
+        input.close();
+        if (read <= 0) throw new Exception("empty config list");
+        JSONArray values = new JSONArray(new String(bytes, "UTF-8"));
+        List<BuiltInConfig> configs = new ArrayList<>();
+        for (int i = 0; i < values.length(); i++) {
+            JSONObject item = values.getJSONObject(i);
+            configs.add(new BuiltInConfig(item.getString("name"), item.getString("url")));
+        }
+        return configs;
+    }
+
+    private static class BuiltInConfig {
+        final String name;
+        final String url;
+
+        BuiltInConfig(String name, String url) {
+            this.name = name;
+            this.url = url;
+        }
     }
 
     public void setOnListener(OnListener listener) {

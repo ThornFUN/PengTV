@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.view.animation.BounceInterpolator;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.github.tvbox.osc.R;
@@ -48,6 +49,10 @@ public class UserFragment extends BaseLazyFragment implements View.OnClickListen
     private LinearLayout tvPush;
     private HomeHotVodAdapter homeHotVodAdapter;
     private List<Movie.Video> homeSourceRec;
+    private TvRecyclerView tvHotList;
+    private View configLoadError;
+    private String configLoadErrorMessage;
+    private View.OnClickListener configRetryListener;
 
     public static UserFragment newInstance() {
         return new UserFragment();
@@ -108,7 +113,20 @@ public class UserFragment extends BaseLazyFragment implements View.OnClickListen
         tvHistory.setOnFocusChangeListener(focusChangeListener);
         tvPush.setOnFocusChangeListener(focusChangeListener);
         tvCollect.setOnFocusChangeListener(focusChangeListener);
-        TvRecyclerView tvHotList = findViewById(R.id.tvHotList);
+        tvHotList = findViewById(R.id.tvHotList);
+        configLoadError = findViewById(R.id.configLoadError);
+        TextView configLoadErrorText = findViewById(R.id.configLoadErrorText);
+        View configRetry = findViewById(R.id.configRetry);
+        configRetry.setOnClickListener(v -> {
+            if (configRetryListener != null) {
+                configRetryListener.onClick(v);
+            }
+        });
+        if (configLoadErrorMessage != null) {
+            configLoadErrorText.setText(configLoadErrorMessage);
+            tvHotList.setVisibility(View.GONE);
+            configLoadError.setVisibility(View.VISIBLE);
+        }
         homeHotVodAdapter = new HomeHotVodAdapter();
         homeHotVodAdapter.setOnItemClickListener(new BaseQuickAdapter.OnItemClickListener() {
             @Override
@@ -148,6 +166,24 @@ public class UserFragment extends BaseLazyFragment implements View.OnClickListen
         tvHotList.setAdapter(homeHotVodAdapter);
 
         initHomeHotVod(homeHotVodAdapter);
+    }
+
+    public void showConfigLoadError(String message, View.OnClickListener retryListener) {
+        configLoadErrorMessage = message;
+        configRetryListener = retryListener;
+        if (configLoadError != null) {
+            ((android.widget.TextView) configLoadError.findViewById(R.id.configLoadErrorText)).setText(message);
+            tvHotList.setVisibility(View.GONE);
+            configLoadError.setVisibility(View.VISIBLE);
+        }
+    }
+
+    public void hideConfigLoadError() {
+        configLoadErrorMessage = null;
+        if (configLoadError != null) {
+            configLoadError.setVisibility(View.GONE);
+            tvHotList.setVisibility(View.VISIBLE);
+        }
     }
 
     private void initHomeHotVod(HomeHotVodAdapter adapter) {

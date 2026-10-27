@@ -62,9 +62,18 @@
                     android:layout_marginStart="@dimen/vs_10"
                     android:layout_marginLeft="@dimen/vs_10"
                     android:text=">"
-                    android:textColor="@android:color/white"
+                    android:textColor="@color/color_CCFFFFFF"
                     android:textSize="@dimen/ts_30" />
             </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/vs_10"
+                android:paddingLeft="@dimen/vs_10"
+                android:text="数据源"
+                android:textColor="@color/color_CCFFFFFF"
+                android:textSize="@dimen/ts_20" />
 
             <LinearLayout
                 android:id="@+id/llApi"
@@ -96,7 +105,7 @@
                     android:layout_height="wrap_content"
                     android:ellipsize="middle"
                     android:singleLine="true"
-                    android:textColor="@android:color/white"
+                    android:textColor="@color/color_CCFFFFFF"
                     android:textSize="@dimen/ts_24" />
 
                 <TextView
@@ -105,15 +114,23 @@
                     android:layout_marginStart="@dimen/vs_10"
                     android:layout_marginLeft="@dimen/vs_10"
                     android:text=">"
-                    android:textColor="@android:color/white"
+                    android:textColor="@color/color_CCFFFFFF"
                     android:textSize="@dimen/ts_30" />
             </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/vs_10"
+                android:paddingLeft="@dimen/vs_10"
+                android:text="首页展示"
+                android:textColor="@color/color_CCFFFFFF"
+                android:textSize="@dimen/ts_20" />
 
             <LinearLayout
                 android:id="@+id/llHomeApi"
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/vs_60"
-                android:layout_marginBottom="@dimen/vs_10"
                 android:background="@drawable/shape_setting_model_focus"
                 android:focusable="true"
                 android:gravity="center_vertical"
@@ -139,7 +156,7 @@
                     android:layout_height="wrap_content"
                     android:ellipsize="middle"
                     android:singleLine="true"
-                    android:textColor="@android:color/white"
+                    android:textColor="@color/color_CCFFFFFF"
                     android:textSize="@dimen/ts_24" />
 
                 <TextView
@@ -148,24 +165,38 @@
                     android:layout_marginStart="@dimen/vs_10"
                     android:layout_marginLeft="@dimen/vs_10"
                     android:text=">"
-                    android:textColor="@android:color/white"
+                    android:textColor="@color/color_CCFFFFFF"
                     android:textSize="@dimen/ts_30" />
             </LinearLayout>
 
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@drawable/divider_settings_item" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/vs_10"
+                android:paddingLeft="@dimen/vs_10"
+                android:text="首页展示"
+                android:textColor="@color/color_CCFFFFFF"
+                android:textSize="@dimen/ts_20"
+                android:visibility="gone" />
+
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="@dimen/vs_60"
+                android:layout_height="wrap_content"
                 android:layout_marginBottom="@dimen/vs_10"
+                android:divider="@drawable/divider_settings_item"
                 android:focusable="false"
-                android:orientation="horizontal">
+                android:orientation="vertical"
+                android:showDividers="middle">
 
                 <LinearLayout
                     android:id="@+id/llHomeRec"
-                    android:layout_width="@dimen/vs_0"
-                    android:layout_height="match_parent"
-                    android:layout_marginEnd="@dimen/vs_5"
-                    android:layout_marginRight="@dimen/vs_5"
-                    android:layout_weight="1"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/vs_60"
                     android:background="@drawable/shape_setting_model_focus"
                     android:focusable="true"
                     android:gravity="center_vertical"
@@ -189,7 +220,7 @@
                         android:id="@+id/tvHomeRec"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textColor="@android:color/white"
+                        android:textColor="@color/color_CCFFFFFF"
                         android:textSize="@dimen/ts_24" />
 
                     <TextView
@@ -198,17 +229,14 @@
                         android:layout_marginStart="@dimen/vs_10"
                         android:layout_marginLeft="@dimen/vs_10"
                         android:text=">"
-                        android:textColor="@android:color/white"
+                        android:textColor="@color/color_CCFFFFFF"
                         android:textSize="@dimen/ts_30" />
                 </LinearLayout>
 
                 <LinearLayout
                     android:id="@+id/llSearchView"
-                    android:layout_width="@dimen/vs_0"
-                    android:layout_height="match_parent"
-                    android:layout_marginStart="@dimen/vs_5"
-                    android:layout_marginLeft="@dimen/vs_5"
-                    android:layout_weight="1"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/vs_60"
                     android:background="@drawable/shape_setting_model_focus"
                     android:focusable="true"
                     android:gravity="center_vertical"
@@ -232,7 +260,7 @@
                         android:id="@+id/tvSearchView"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textColor="@android:color/white"
+                        android:textColor="@color/color_CCFFFFFF"
                         android:textSize="@dimen/ts_24" />
 
                     <TextView
@@ -241,25 +269,33 @@
                         android:layout_marginStart="@dimen/vs_10"
                         android:layout_marginLeft="@dimen/vs_10"
                         android:text=">"
-                        android:textColor="@android:color/white"
+                        android:textColor="@color/color_CCFFFFFF"
                         android:textSize="@dimen/ts_30" />
                 </LinearLayout>
             </LinearLayout>
 
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/vs_10"
+                android:paddingLeft="@dimen/vs_10"
+                android:text="播放设置"
+                android:textColor="@color/color_CCFFFFFF"
+                android:textSize="@dimen/ts_20" />
+
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="@dimen/vs_60"
+                android:layout_height="wrap_content"
                 android:layout_marginBottom="@dimen/vs_10"
+                android:divider="@drawable/divider_settings_item"
                 android:focusable="false"
-                android:orientation="horizontal">
+                android:orientation="vertical"
+                android:showDividers="middle">
 
                 <LinearLayout
                     android:id="@+id/llPlay"
-                    android:layout_width="@dimen/vs_0"
-                    android:layout_height="match_parent"
-                    android:layout_marginEnd="@dimen/vs_5"
-                    android:layout_marginRight="@dimen/vs_5"
-                    android:layout_weight="1"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/vs_60"
                     android:background="@drawable/shape_setting_model_focus"
                     android:focusable="true"
                     android:gravity="center_vertical"
@@ -283,7 +319,7 @@
                         android:id="@+id/tvPlay"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textColor="@android:color/white"
+                        android:textColor="@color/color_CCFFFFFF"
                         android:textSize="@dimen/ts_24" />
 
                     <TextView
@@ -292,17 +328,14 @@
                         android:layout_marginStart="@dimen/vs_10"
                         android:layout_marginLeft="@dimen/vs_10"
                         android:text=">"
-                        android:textColor="@android:color/white"
+                        android:textColor="@color/color_CCFFFFFF"
                         android:textSize="@dimen/ts_30" />
                 </LinearLayout>
 
                 <LinearLayout
                     android:id="@+id/llMediaCodec"
-                    android:layout_width="@dimen/vs_0"
-                    android:layout_height="match_parent"
-                    android:layout_marginStart="@dimen/vs_5"
-                    android:layout_marginLeft="@dimen/vs_5"
-                    android:layout_weight="1"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/vs_60"
                     android:background="@drawable/shape_setting_model_focus"
                     android:focusable="true"
                     android:gravity="center_vertical"
@@ -326,7 +359,7 @@
                         android:id="@+id/tvMediaCodec"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textColor="@android:color/white"
+                        android:textColor="@color/color_CCFFFFFF"
                         android:textSize="@dimen/ts_24" />
 
                     <TextView
@@ -335,7 +368,7 @@
                         android:layout_marginStart="@dimen/vs_10"
                         android:layout_marginLeft="@dimen/vs_10"
                         android:text=">"
-                        android:textColor="@android:color/white"
+                        android:textColor="@color/color_CCFFFFFF"
                         android:textSize="@dimen/ts_30" />
                 </LinearLayout>
             </LinearLayout>
@@ -343,18 +376,17 @@
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="@dimen/vs_60"
+                android:layout_height="wrap_content"
                 android:layout_marginBottom="@dimen/vs_10"
+                android:divider="@drawable/divider_settings_item"
                 android:focusable="false"
-                android:orientation="horizontal">
+                android:orientation="vertical"
+                android:showDividers="middle">
 
                 <LinearLayout
                     android:id="@+id/llRender"
-                    android:layout_width="@dimen/vs_0"
-                    android:layout_height="match_parent"
-                    android:layout_marginEnd="@dimen/vs_5"
-                    android:layout_marginRight="@dimen/vs_5"
-                    android:layout_weight="1"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/vs_60"
                     android:background="@drawable/shape_setting_model_focus"
                     android:focusable="true"
                     android:gravity="center_vertical"
@@ -378,7 +410,7 @@
                         android:id="@+id/tvRenderType"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textColor="@android:color/white"
+                        android:textColor="@color/color_CCFFFFFF"
                         android:textSize="@dimen/ts_24" />
 
                     <TextView
@@ -387,17 +419,14 @@
                         android:layout_marginStart="@dimen/vs_10"
                         android:layout_marginLeft="@dimen/vs_10"
                         android:text=">"
-                        android:textColor="@android:color/white"
+                        android:textColor="@color/color_CCFFFFFF"
                         android:textSize="@dimen/ts_30" />
                 </LinearLayout>
 
                 <LinearLayout
                     android:id="@+id/llScale"
-                    android:layout_width="@dimen/vs_0"
-                    android:layout_height="match_parent"
-                    android:layout_marginStart="@dimen/vs_5"
-                    android:layout_marginLeft="@dimen/vs_5"
-                    android:layout_weight="1"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/vs_60"
                     android:background="@drawable/shape_setting_model_focus"
                     android:focusable="true"
                     android:gravity="center_vertical"
@@ -421,7 +450,7 @@
                         android:id="@+id/tvScaleType"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textColor="@android:color/white"
+                        android:textColor="@color/color_CCFFFFFF"
                         android:textSize="@dimen/ts_24" />
 
                     <TextView
@@ -430,17 +459,17 @@
                         android:layout_marginStart="@dimen/vs_10"
                         android:layout_marginLeft="@dimen/vs_10"
                         android:text=">"
-                        android:textColor="@android:color/white"
+                        android:textColor="@color/color_CCFFFFFF"
                         android:textSize="@dimen/ts_30" />
                 </LinearLayout>
             </LinearLayout>
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="@dimen/vs_60"
+                android:layout_height="wrap_content"
                 android:layout_marginBottom="@dimen/vs_10"
                 android:focusable="false"
-                android:orientation="horizontal">
+                android:orientation="vertical">
 
                 <LinearLayout
                     android:id="@+id/llParseWebVew"
@@ -483,18 +512,15 @@
                         android:layout_marginStart="@dimen/vs_10"
                         android:layout_marginLeft="@dimen/vs_10"
                         android:text=">"
-                        android:textColor="@android:color/white"
+                        android:textColor="@color/color_CCFFFFFF"
                         android:textSize="@dimen/ts_30" />
                 </LinearLayout>
 
 
                 <LinearLayout
                     android:id="@+id/llDns"
-                    android:layout_width="@dimen/vs_0"
-                    android:layout_height="match_parent"
-                    android:layout_marginStart="@dimen/vs_5"
-                    android:layout_marginLeft="@dimen/vs_5"
-                    android:layout_weight="1"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/vs_60"
                     android:background="@drawable/shape_setting_model_focus"
                     android:focusable="true"
                     android:gravity="center_vertical"
@@ -505,7 +531,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="安全DNS"
+                        android:text="网络与数据 · 安全DNS"
                         android:textColor="@android:color/white"
                         android:textSize="@dimen/ts_24" />
 
@@ -518,7 +544,7 @@
                         android:id="@+id/tvDns"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textColor="@android:color/white"
+                        android:textColor="@color/color_CCFFFFFF"
                         android:textSize="@dimen/ts_24" />
 
                     <TextView
@@ -527,25 +553,22 @@
                         android:layout_marginStart="@dimen/vs_10"
                         android:layout_marginLeft="@dimen/vs_10"
                         android:text=">"
-                        android:textColor="@android:color/white"
+                        android:textColor="@color/color_CCFFFFFF"
                         android:textSize="@dimen/ts_30" />
                 </LinearLayout>
             </LinearLayout>
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="@dimen/vs_60"
+                android:layout_height="wrap_content"
                 android:layout_marginBottom="@dimen/vs_10"
                 android:focusable="false"
-                android:orientation="horizontal">
+                android:orientation="vertical">
 
                 <LinearLayout
                     android:id="@+id/llBackup"
-                    android:layout_width="@dimen/vs_0"
-                    android:layout_height="match_parent"
-                    android:layout_marginEnd="@dimen/vs_5"
-                    android:layout_marginRight="@dimen/vs_5"
-                    android:layout_weight="1"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/vs_60"
                     android:background="@drawable/shape_setting_model_focus"
                     android:focusable="true"
                     android:gravity="center_vertical"
@@ -571,7 +594,7 @@
                         android:layout_marginStart="@dimen/vs_10"
                         android:layout_marginLeft="@dimen/vs_10"
                         android:text=">"
-                        android:textColor="@android:color/white"
+                        android:textColor="@color/color_CCFFFFFF"
                         android:textSize="@dimen/ts_30" />
                 </LinearLayout>
 
@@ -608,7 +631,7 @@
                         android:layout_marginStart="@dimen/vs_10"
                         android:layout_marginLeft="@dimen/vs_10"
                         android:text=">"
-                        android:textColor="@android:color/white"
+                        android:textColor="@color/color_CCFFFFFF"
                         android:textSize="@dimen/ts_30" />
                 </LinearLayout>
             </LinearLayout>
@@ -643,7 +666,7 @@
                     android:layout_marginStart="@dimen/vs_10"
                     android:layout_marginLeft="@dimen/vs_10"
                     android:text=">"
-                    android:textColor="@android:color/white"
+                    android:textColor="@color/color_CCFFFFFF"
                     android:textSize="@dimen/ts_30" />
             </LinearLayout>
 
