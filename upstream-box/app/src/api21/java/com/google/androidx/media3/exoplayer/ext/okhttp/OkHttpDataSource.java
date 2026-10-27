@@ -13,29 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.google.androidx.media3.exoplayer.ext.okhttp;
+package com.google.com.google.android.exoplayer2.ext.okhttp;
 
-import static androidx.media3.common.util.Util.castNonNull;
-import static androidx.media3.datasource.HttpUtil.buildRangeRequestHeader;
+import static com.google.android.exoplayer2.util.Util.castNonNull;
+import static com.google.android.exoplayer2.upstream.HttpUtil.buildRangeRequestHeader;
 import static java.lang.Math.min;
 
 import android.net.Uri;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.OptIn;
-import androidx.media3.common.C;
-import androidx.media3.common.MediaLibraryInfo;
-import androidx.media3.common.PlaybackException;
-import androidx.media3.common.util.Assertions;
-import androidx.media3.common.util.UnstableApi;
-import androidx.media3.common.util.Util;
-import androidx.media3.datasource.BaseDataSource;
-import androidx.media3.datasource.DataSource;
-import androidx.media3.datasource.DataSourceException;
-import androidx.media3.datasource.DataSpec;
-import androidx.media3.datasource.HttpDataSource;
-import androidx.media3.datasource.HttpUtil;
-import androidx.media3.datasource.TransferListener;
+import com.google.android.exoplayer2.C;
+import com.google.android.exoplayer2.MediaLibraryInfo;
+import com.google.android.exoplayer2.PlaybackException;
+import com.google.android.exoplayer2.util.Assertions;
+import com.google.android.exoplayer2.util.UnstableApi;
+import com.google.android.exoplayer2.util.Util;
+import com.google.android.exoplayer2.upstream.BaseDataSource;
+import com.google.android.exoplayer2.upstream.DataSource;
+import com.google.android.exoplayer2.upstream.DataSourceException;
+import com.google.android.exoplayer2.upstream.DataSpec;
+import com.google.android.exoplayer2.upstream.HttpDataSource;
+import com.google.android.exoplayer2.upstream.HttpUtil;
+import com.google.android.exoplayer2.upstream.TransferListener;
 
 import com.google.common.base.Predicate;
 import com.google.common.net.HttpHeaders;

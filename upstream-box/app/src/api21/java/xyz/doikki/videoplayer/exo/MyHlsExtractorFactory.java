@@ -1,33 +1,33 @@
 package xyz.doikki.videoplayer.exo;
 
 
-import static androidx.media3.common.util.Assertions.checkNotNull;
+import static com.google.android.exoplayer2.util.Assertions.checkNotNull;
 
 import android.annotation.SuppressLint;
 import android.net.Uri;
 import android.text.TextUtils;
 
 import androidx.annotation.Nullable;
-import androidx.media3.common.FileTypes;
-import androidx.media3.common.Format;
-import androidx.media3.common.Metadata;
-import androidx.media3.common.MimeTypes;
-import androidx.media3.common.util.TimestampAdjuster;
-import androidx.media3.common.util.UnstableApi;
-import androidx.media3.exoplayer.analytics.PlayerId;
-import androidx.media3.exoplayer.hls.HlsExtractorFactory;
-import androidx.media3.exoplayer.hls.HlsTrackMetadataEntry;
-import androidx.media3.exoplayer.hls.WebvttExtractor;
-import androidx.media3.extractor.Extractor;
-import androidx.media3.extractor.ExtractorInput;
-import androidx.media3.extractor.mp3.Mp3Extractor;
-import androidx.media3.extractor.mp4.FragmentedMp4Extractor;
-import androidx.media3.extractor.ts.Ac3Extractor;
-import androidx.media3.extractor.ts.Ac4Extractor;
-import androidx.media3.extractor.ts.AdtsExtractor;
-import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory;
+import com.google.android.exoplayer2.FileTypes;
+import com.google.android.exoplayer2.Format;
+import com.google.android.exoplayer2.Metadata;
+import com.google.android.exoplayer2.MimeTypes;
+import com.google.android.exoplayer2.util.TimestampAdjuster;
+import com.google.android.exoplayer2.util.UnstableApi;
+import com.google.android.exoplayer2.analytics.PlayerId;
+import com.google.android.exoplayer2.hls.HlsExtractorFactory;
+import com.google.android.exoplayer2.hls.HlsTrackMetadataEntry;
+import com.google.android.exoplayer2.hls.WebvttExtractor;
+import com.google.android.exoplayer2.extractor.Extractor;
+import com.google.android.exoplayer2.extractor.ExtractorInput;
+import com.google.android.exoplayer2.extractor.mp3.Mp3Extractor;
+import com.google.android.exoplayer2.extractor.mp4.FragmentedMp4Extractor;
+import com.google.android.exoplayer2.extractor.ts.Ac3Extractor;
+import com.google.android.exoplayer2.extractor.ts.Ac4Extractor;
+import com.google.android.exoplayer2.extractor.ts.AdtsExtractor;
+import com.google.android.exoplayer2.extractor.ts.DefaultTsPayloadReaderFactory;
 
-import com.google.androidx.media3.exoplayer.extractor.ts.MyTsExtractor;
+import com.google.com.google.android.exoplayer2.extractor.ts.MyTsExtractor;
 import com.google.common.primitives.Ints;
 
 import java.io.EOFException;

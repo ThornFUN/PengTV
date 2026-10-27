@@ -1,9 +1,8 @@
-This directory is an unmodified upstream reference snapshot of Box.
+This directory is a PENG fork based on an upstream Box reference snapshot.
 
 Upstream repository: https://github.com/takagen99/Box
 Imported upstream commit: 258a5fef61578869ae905ca230bdde9e99fc19a8
 License: GNU Affero General Public License, version 3.0 or later.
 
-This reference tree is intentionally excluded from PengLauncher's Gradle build.
-It requires Android API 21 or higher. API 19-compatible functionality is
-selected and backported into the existing vod module in separate changes.
+The source is being downported for Android API 19. Newer upstream features and
+dependencies are kept only when they can be made API 19-compatible.

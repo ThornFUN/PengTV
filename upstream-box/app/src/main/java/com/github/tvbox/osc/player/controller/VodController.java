@@ -708,11 +708,13 @@ public class VodController extends BaseController {
                 FastClickCheckUtil.check(view);
                 try {
                     int defaultPos = mPlayerConfig.getInt("pl");
+                    if (defaultPos == 2 || defaultPos == 3) {
+                        defaultPos = 1;
+                        mPlayerConfig.put("pl", defaultPos);
+                    }
                     ArrayList<Integer> players = new ArrayList<>();
                     players.add(0);  // System
                     players.add(1);  // IJK
-                    players.add(2);  // Exo
-                    players.add(3);  // Ali
                     if (mxPlayerExist) {
                         players.add(10);
                     }

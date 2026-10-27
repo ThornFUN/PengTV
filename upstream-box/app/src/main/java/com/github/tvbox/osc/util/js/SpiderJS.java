@@ -1,7 +1,7 @@
 package com.github.tvbox.osc.util.js;
 
 import android.content.Context;
-import androidx.media3.common.util.UriUtil;
+import com.google.android.exoplayer2.util.UriUtil;
 import com.github.catvod.crawler.Spider;
 import com.github.tvbox.osc.util.FileUtils;
 import com.github.tvbox.osc.util.LOG;

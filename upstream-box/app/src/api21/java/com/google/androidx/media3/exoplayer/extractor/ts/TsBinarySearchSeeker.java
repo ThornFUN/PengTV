@@ -1,8 +1,8 @@
-package com.google.androidx.media3.exoplayer.extractor.ts;
+package com.google.com.google.android.exoplayer2.extractor.ts;
 
-import androidx.media3.extractor.ExtractorInput;
-import androidx.media3.extractor.PositionHolder;
-import androidx.media3.extractor.SeekMap;
+import com.google.android.exoplayer2.extractor.ExtractorInput;
+import com.google.android.exoplayer2.extractor.PositionHolder;
+import com.google.android.exoplayer2.extractor.SeekMap;
 
 public class TsBinarySearchSeeker {
     public TsBinarySearchSeeker(Object pcrTimestampAdjuster, long durationUs, long inputLength, int pcrPid, int timestampSearchBytes) {

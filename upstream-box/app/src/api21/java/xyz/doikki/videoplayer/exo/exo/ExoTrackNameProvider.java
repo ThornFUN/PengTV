@@ -6,12 +6,12 @@ import android.text.TextUtils;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.OptIn;
-import androidx.media3.common.C;
-import androidx.media3.common.Format;
-import androidx.media3.common.MimeTypes;
-import androidx.media3.common.util.Assertions;
-import androidx.media3.common.util.UnstableApi;
-import androidx.media3.common.util.Util;
+import com.google.android.exoplayer2.C;
+import com.google.android.exoplayer2.Format;
+import com.google.android.exoplayer2.MimeTypes;
+import com.google.android.exoplayer2.util.Assertions;
+import com.google.android.exoplayer2.util.UnstableApi;
+import com.google.android.exoplayer2.util.Util;
 
 import com.github.tvbox.osc.R;
 

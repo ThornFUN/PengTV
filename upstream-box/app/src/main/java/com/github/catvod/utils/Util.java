@@ -128,7 +128,7 @@ public class Util {
 
     public static String format(StringBuilder builder, Formatter formatter, long timeMs) {
         try {
-            return androidx.media3.common.util.Util.getStringForTime(builder, formatter, timeMs);
+            return com.google.android.exoplayer2.util.Util.getStringForTime(builder, formatter, timeMs);
         } catch (Exception e) {
             return "";
         }

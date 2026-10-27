@@ -7,8 +7,8 @@ import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 
-import androidx.media3.common.Player;
-import androidx.media3.common.VideoSize;
+import com.google.android.exoplayer2.Player;
+import com.google.android.exoplayer2.VideoSize;
 
 import com.aliyun.player.AliPlayer;
 import com.aliyun.player.AliPlayerFactory;

@@ -5,7 +5,6 @@ import android.content.Context;
 import com.blankj.utilcode.util.ToastUtils;
 import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.bean.IJKCode;
-import com.github.tvbox.osc.player.EXOmPlayer;
 import com.github.tvbox.osc.player.IjkmPlayer;
 import com.github.tvbox.osc.player.render.SurfaceRenderViewFactory;
 import com.orhanobut.hawk.Hawk;
@@ -14,11 +13,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
-import xyz.doikki.videoplayer.aliplayer.AliyunMediaPlayerFactory;
 import xyz.doikki.videoplayer.player.AndroidMediaPlayerFactory;
 import xyz.doikki.videoplayer.player.PlayerFactory;
 import xyz.doikki.videoplayer.player.VideoView;
-import xyz.doikki.videoplayer.render.PlayerViewRenderViewFactory;
 import xyz.doikki.videoplayer.render.RenderViewFactory;
 import xyz.doikki.videoplayer.render.TextureRenderViewFactory;
 
@@ -51,31 +48,18 @@ public class PlayerHelper {
                     return new IjkmPlayer(context, codec);
                 }
             };
-        } else if (playerType == 2) {
-            playerFactory = new PlayerFactory<EXOmPlayer>() {
-                @Override
-                public EXOmPlayer createPlayer(Context context) {
-                    return new EXOmPlayer(context);
-                }
-            };
-        } else if (playerType == 3) {
-            playerFactory = AliyunMediaPlayerFactory.create();
         } else {
-            playerFactory = AndroidMediaPlayerFactory.create();
+            playerFactory = playerType == 0 ? AndroidMediaPlayerFactory.create() : createIjkPlayerFactory(codec);
         }
-        RenderViewFactory renderViewFactory = null;
-        if (playerType==2){
-            renderViewFactory = PlayerViewRenderViewFactory.create(renderType);
-        }else{
-            switch (renderType) {
-                case 0:
-                default:
-                    renderViewFactory = TextureRenderViewFactory.create();
-                    break;
-                case 1:
-                    renderViewFactory = SurfaceRenderViewFactory.create();
-                    break;
-            }
+        RenderViewFactory renderViewFactory;
+        switch (renderType) {
+            case 1:
+                renderViewFactory = SurfaceRenderViewFactory.create();
+                break;
+            case 0:
+            default:
+                renderViewFactory = TextureRenderViewFactory.create();
+                break;
         }
 
         videoView.setPlayerFactory(playerFactory);
@@ -86,26 +70,7 @@ public class PlayerHelper {
     public static void updateCfg(VideoView videoView) {
         int playType = Hawk.get(HawkConfig.PLAY_TYPE, 0);
         PlayerFactory playerFactory;
-        if (playType == 1) {
-            playerFactory = new PlayerFactory<IjkmPlayer>() {
-                @Override
-                public IjkmPlayer createPlayer(Context context) {
-                    return new IjkmPlayer(context, null);
-                }
-            };
-
-        } else if (playType == 2) {
-            playerFactory = new PlayerFactory<EXOmPlayer>() {
-                @Override
-                public EXOmPlayer createPlayer(Context context) {
-                    return new EXOmPlayer(context);
-                }
-            };
-        } else if (playType == 3) {
-            playerFactory = AliyunMediaPlayerFactory.create();
-        } else {
-            playerFactory = AndroidMediaPlayerFactory.create();
-        }
+        playerFactory = playType == 0 ? AndroidMediaPlayerFactory.create() : createIjkPlayerFactory(null);
         int renderType = Hawk.get(HawkConfig.PLAY_RENDER, 0);
         RenderViewFactory renderViewFactory = null;
         switch (renderType) {
@@ -123,6 +88,15 @@ public class PlayerHelper {
 
     public static void init() {
         IjkMediaPlayer.loadLibrariesOnce(null);
+    }
+
+    private static PlayerFactory<IjkmPlayer> createIjkPlayerFactory(final IJKCode codec) {
+        return new PlayerFactory<IjkmPlayer>() {
+            @Override
+            public IjkmPlayer createPlayer(Context context) {
+                return new IjkmPlayer(context, codec);
+            }
+        };
     }
 
     public static String getPlayerName(int playType) {

@@ -1,7 +1,7 @@
-package com.google.androidx.media3.exoplayer.extractor.ts;
+package com.google.com.google.android.exoplayer2.extractor.ts;
 
-import androidx.media3.extractor.ExtractorInput;
-import androidx.media3.extractor.PositionHolder;
+import com.google.android.exoplayer2.extractor.ExtractorInput;
+import com.google.android.exoplayer2.extractor.PositionHolder;
 
 public class TsDurationReader {
     public TsDurationReader(int timestampSearchBytes) {

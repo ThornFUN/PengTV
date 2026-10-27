@@ -33,7 +33,6 @@ import okhttp3.OkHttpClient;
 import okhttp3.dnsoverhttps.DnsOverHttps;
 import okhttp3.internal.Util;
 import okhttp3.internal.Version;
-import xyz.doikki.videoplayer.exo.ExoMediaSourceHelper;
 
 public class OkGoHelper {
     public static final long DEFAULT_MILLISECONDS = 10000;      //默认的超时时间
@@ -53,34 +52,6 @@ public class OkGoHelper {
         put(503,"Service Unavailable");
         put(504,"Gateway Timeout");
     }};
-
-    static void initExoOkHttpClient() {
-        OkHttpClient.Builder builder = new OkHttpClient.Builder();
-        HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor("OkExoPlayer");
-
-        if (Hawk.get(HawkConfig.DEBUG_OPEN, false)) {
-            loggingInterceptor.setPrintLevel(HttpLoggingInterceptor.Level.BODY);
-            loggingInterceptor.setColorLevel(Level.INFO);
-        } else {
-            loggingInterceptor.setPrintLevel(HttpLoggingInterceptor.Level.NONE);
-            loggingInterceptor.setColorLevel(Level.OFF);
-        }
-        builder.addInterceptor(loggingInterceptor);
-        builder.connectionSpecs(getConnectionSpec());
-        builder.retryOnConnectionFailure(true);
-        builder.followRedirects(true);
-        builder.followSslRedirects(true);
-
-
-        try {
-            setOkHttpSsl(builder);
-        } catch (Throwable th) {
-            th.printStackTrace();
-        }
-        builder.dns(dnsOverHttps);
-
-        ExoMediaSourceHelper.getInstance(App.getInstance()).setOkClient(builder.build());
-    }
 
     public static DnsOverHttps dnsOverHttps = null;
 
@@ -193,7 +164,6 @@ public class OkGoHelper {
         builder.followSslRedirects(false);
         noRedirectClient = builder.build();
 
-        initExoOkHttpClient();        
     }
 
     private static synchronized void setOkHttpSsl(OkHttpClient.Builder builder) {

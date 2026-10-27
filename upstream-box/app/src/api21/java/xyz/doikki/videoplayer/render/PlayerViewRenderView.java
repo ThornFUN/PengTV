@@ -1,8 +1,8 @@
 package xyz.doikki.videoplayer.render;
 
-import static androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL;
-import static androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT;
-import static androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM;
+import static com.google.android.exoplayer2.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL;
+import static com.google.android.exoplayer2.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT;
+import static com.google.android.exoplayer2.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -12,10 +12,10 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewParent;
 
-import androidx.media3.common.util.UnstableApi;
-import androidx.media3.ui.AspectRatioFrameLayout;
-import androidx.media3.ui.PlayerView;
-import androidx.media3.ui.SubtitleView;
+import com.google.android.exoplayer2.util.UnstableApi;
+import com.google.android.exoplayer2.ui.AspectRatioFrameLayout;
+import com.google.android.exoplayer2.ui.PlayerView;
+import com.google.android.exoplayer2.ui.SubtitleView;
 
 import com.github.tvbox.osc.player.EXOmPlayer;
 import com.lzy.okgo.utils.OkLogger;

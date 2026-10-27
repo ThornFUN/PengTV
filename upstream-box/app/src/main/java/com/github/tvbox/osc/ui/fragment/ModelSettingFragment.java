@@ -123,7 +123,12 @@ public class ModelSettingFragment extends BaseLazyFragment {
         tvScale = findViewById(R.id.tvScaleType);
         tvScale.setText(PlayerHelper.getScaleName(Hawk.get(HawkConfig.PLAY_SCALE, 0)));
         tvPlay = findViewById(R.id.tvPlay);
-        tvPlay.setText(PlayerHelper.getPlayerName(Hawk.get(HawkConfig.PLAY_TYPE, 0)));
+        int playType = Hawk.get(HawkConfig.PLAY_TYPE, 0);
+        if (playType == 2 || playType == 3) {
+            playType = 1;
+            Hawk.put(HawkConfig.PLAY_TYPE, playType);
+        }
+        tvPlay.setText(PlayerHelper.getPlayerName(playType));
         tvVideoPurifyText = findViewById(R.id.tvVideoPurifyText);
         tvVideoPurifyText.setText(Hawk.get(HawkConfig.VIDEO_PURIFY, true) ? "开启" : "关闭");
         // System Section
@@ -446,8 +451,6 @@ public class ModelSettingFragment extends BaseLazyFragment {
                 ArrayList<Integer> players = new ArrayList<>();
                 players.add(0);
                 players.add(1);
-                players.add(2);
-                players.add(3);
                 if (MXPlayer.getPackageInfo()!=null){
                     players.add(10);
                 }

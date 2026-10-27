@@ -2,7 +2,7 @@ package com.github.tvbox.osc.util;
 
 import android.content.Context;
 
-import androidx.media3.exoplayer.DefaultRenderersFactory;
+import com.google.android.exoplayer2.DefaultRenderersFactory;
 
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.api.ApiConfig;
@@ -12,7 +12,6 @@ import com.orhanobut.hawk.Hawk;
 
 import java.util.List;
 
-import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.NextRenderersFactory;
 
 public class HawkUtils {
 
@@ -127,14 +126,7 @@ public class HawkUtils {
      * @return {@link DefaultRenderersFactory }
      */
     public static DefaultRenderersFactory createExoRendererActualValue(Context context) {
-        int renderer = getExoRenderer();
-        switch (renderer) {
-            case 1:
-                return new NextRenderersFactory(context);
-            case 0:
-            default:
-                return new DefaultRenderersFactory(context);
-        }
+        return new DefaultRenderersFactory(context);
     }
 
     /**

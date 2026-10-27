@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.google.androidx.media3.exoplayer.extractor.ts;
+package com.google.com.google.android.exoplayer2.extractor.ts;
 
-import static androidx.media3.extractor.ts.TsPayloadReader.EsInfo.AUDIO_TYPE_UNDEFINED;
-import static androidx.media3.extractor.ts.TsPayloadReader.FLAG_PAYLOAD_UNIT_START_INDICATOR;
+import static com.google.android.exoplayer2.extractor.ts.TsPayloadReader.EsInfo.AUDIO_TYPE_UNDEFINED;
+import static com.google.android.exoplayer2.extractor.ts.TsPayloadReader.FLAG_PAYLOAD_UNIT_START_INDICATOR;
 
 import android.util.SparseArray;
 import android.util.SparseBooleanArray;
@@ -24,26 +24,26 @@ import android.util.SparseIntArray;
 
 import androidx.annotation.IntDef;
 import androidx.annotation.Nullable;
-import androidx.media3.common.C;
-import androidx.media3.common.ParserException;
-import androidx.media3.common.util.Assertions;
-import androidx.media3.common.util.ParsableBitArray;
-import androidx.media3.common.util.ParsableByteArray;
-import androidx.media3.common.util.TimestampAdjuster;
-import androidx.media3.common.util.UnstableApi;
-import androidx.media3.common.util.Util;
-import androidx.media3.extractor.Extractor;
-import androidx.media3.extractor.ExtractorInput;
-import androidx.media3.extractor.ExtractorOutput;
-import androidx.media3.extractor.ExtractorsFactory;
-import androidx.media3.extractor.PositionHolder;
-import androidx.media3.extractor.SeekMap;
-import androidx.media3.extractor.TrackOutput;
-import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory;
-import androidx.media3.extractor.ts.SectionPayloadReader;
-import androidx.media3.extractor.ts.SectionReader;
-import androidx.media3.extractor.ts.TsPayloadReader;
-import androidx.media3.extractor.ts.TsUtil;
+import com.google.android.exoplayer2.C;
+import com.google.android.exoplayer2.ParserException;
+import com.google.android.exoplayer2.util.Assertions;
+import com.google.android.exoplayer2.util.ParsableBitArray;
+import com.google.android.exoplayer2.util.ParsableByteArray;
+import com.google.android.exoplayer2.util.TimestampAdjuster;
+import com.google.android.exoplayer2.util.UnstableApi;
+import com.google.android.exoplayer2.util.Util;
+import com.google.android.exoplayer2.extractor.Extractor;
+import com.google.android.exoplayer2.extractor.ExtractorInput;
+import com.google.android.exoplayer2.extractor.ExtractorOutput;
+import com.google.android.exoplayer2.extractor.ExtractorsFactory;
+import com.google.android.exoplayer2.extractor.PositionHolder;
+import com.google.android.exoplayer2.extractor.SeekMap;
+import com.google.android.exoplayer2.extractor.TrackOutput;
+import com.google.android.exoplayer2.extractor.ts.DefaultTsPayloadReaderFactory;
+import com.google.android.exoplayer2.extractor.ts.SectionPayloadReader;
+import com.google.android.exoplayer2.extractor.ts.SectionReader;
+import com.google.android.exoplayer2.extractor.ts.TsPayloadReader;
+import com.google.android.exoplayer2.extractor.ts.TsUtil;
 
 import java.io.IOException;
 import java.lang.annotation.Documented;
