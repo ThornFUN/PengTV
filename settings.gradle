@@ -1,16 +1,22 @@
 pluginManagement {
     repositories {
+        maven { url "https://maven.aliyun.com/repository/public" }
+        maven { url "https://maven.aliyun.com/repository/jcenter" }
         google()
         mavenCentral()
         gradlePluginPortal()
+        maven { url "https://jitpack.io" }
     }
 }
 
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
+        maven { url "https://maven.aliyun.com/repository/public" }
+        maven { url "https://maven.aliyun.com/repository/jcenter" }
         google()
         mavenCentral()
+        maven { url "https://jitpack.io" }
     }
 }
 
@@ -18,3 +24,4 @@ rootProject.name = "PengLauncher"
 include(":app")
 include(":video")
 include(":vod")
+include(":vodplayer")

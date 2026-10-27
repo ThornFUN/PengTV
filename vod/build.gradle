@@ -11,15 +11,21 @@ def hasReleaseSigning = ["storeFile", "storePassword", "keyAlias", "keyPassword"
         .every { signingProperties.getProperty(it) }
 
 android {
-    namespace "com.peng.vod"
+    namespace "com.github.tvbox.osc"
     compileSdk 35
 
     defaultConfig {
         applicationId "com.peng.vod"
         minSdk 19
-        targetSdk 35
+        targetSdk 28
         versionCode 1
-        versionName "0.1.0"
+        versionName "0.2.0-tvbox"
+        multiDexEnabled true
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments = ["room.schemaLocation": "$projectDir/schemas".toString()]
+            }
+        }
     }
 
     signingConfigs {
@@ -40,14 +46,48 @@ android {
             }
         }
     }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    packaging {
+        resources {
+            excludes += ["META-INF/DEPENDENCIES"]
+        }
+    }
 }
 
 def appVersionName = android.defaultConfig.versionName
 
 dependencies {
-    implementation "com.google.android.exoplayer:exoplayer-core:2.18.7"
-    implementation "com.google.android.exoplayer:exoplayer-hls:2.18.7"
-    implementation "com.google.android.exoplayer:exoplayer-ui:2.18.7"
+    implementation fileTree(dir: "libs", include: ["*.jar", "*.aar"])
+    implementation "org.nanohttpd:nanohttpd:2.3.1"
+    implementation "com.google.zxing:core:3.4.1"
+    implementation "androidx.appcompat:appcompat:1.3.0"
+    implementation "androidx.constraintlayout:constraintlayout:2.0.4"
+    implementation "androidx.lifecycle:lifecycle-extensions:2.2.0"
+    implementation "androidx.recyclerview:recyclerview:1.1.0"
+    implementation "androidx.room:room-runtime:2.6.1"
+    annotationProcessor "androidx.room:room-compiler:2.6.1"
+    implementation "androidx.multidex:multidex:2.0.1"
+    implementation "com.squareup.okhttp3:okhttp:3.12.1"
+    implementation "com.squareup.okio:okio:2.6.0"
+    implementation "com.github.CymChad:BaseRecyclerViewAdapterHelper:2.9.45-androidx"
+    implementation "com.kingja.loadsir:loadsir:1.3.8"
+    implementation "com.google.code.gson:gson:2.8.7"
+    implementation "com.squareup.picasso:picasso:2.71828"
+    implementation "me.jessyan:autosize:1.2.1"
+    implementation("com.thoughtworks.xstream:xstream:1.4.15") {
+        exclude group: "xmlpull", module: "xmlpull"
+    }
+    implementation "org.greenrobot:eventbus:3.2.0"
+    implementation "com.orhanobut:hawk:2.0.1"
+    implementation project(":vodplayer")
+    implementation "com.lzy.net:okgo:3.0.4"
+    implementation "com.owen:tv-recyclerview:3.0.0"
+    implementation "com.github.getActivity:XXPermissions:13.6"
 }
 
 androidComponents {

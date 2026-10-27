@@ -1,0 +1,9 @@
+PENG影视 contains code derived from llazyl/TVBox.
+
+Upstream repository: https://github.com/llazyl/TVBox
+Imported upstream commit: 9d41bf6d4f700445b708f90b534e310b94bc79fc
+License: GNU Affero General Public License, version 3.0 or later.
+
+The complete upstream license text is included in TVBOX-AGPL-3.0.txt.
+PENG-specific build, branding, API 19 compatibility, and safety-boundary
+changes are maintained in this module.
