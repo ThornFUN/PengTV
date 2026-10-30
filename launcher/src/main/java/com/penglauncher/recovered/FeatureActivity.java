@@ -2,7 +2,10 @@ package com.penglauncher.recovered;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.Manifest;
 import android.content.Intent;
+import android.net.Uri;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -19,6 +22,7 @@ import android.widget.ListView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.core.content.FileProvider;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -36,20 +40,31 @@ import java.net.SocketException;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
 import java.util.Enumeration;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 abstract class FeatureActivity extends Activity {
     public static final String SETTINGS = "settings";
     public static final String ABOUT = "about";
     public static final String WALLPAPER_UPLOAD = "wallpaper_upload";
+    public static final String FILE_MANAGER = "file_manager";
     public static final String WALLPAPER_PREFERENCES = "home_wallpaper";
     public static final String WALLPAPER_PATH_KEY = "path";
     private static final int WALLPAPER_UPLOAD_PORT = 8080;
     private static final long MAX_WALLPAPER_BYTES = 8L * 1024L * 1024L;
     private static final long MAX_FILE_BYTES = 1024L * 1024L * 1024L;
     private static final int MAX_REQUEST_HEADER_BYTES = 8192;
+    private static final int REQUEST_STORAGE_ACCESS = 1;
     private WallpaperUploadServer uploadServer;
     private LinearLayout content;
     private View firstAction;
+    private List<File> storageRoots;
+    private File currentDirectory;
+    private File activeStorageRoot;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -97,6 +112,14 @@ abstract class FeatureActivity extends Activity {
     }
 
     protected void addAction(String title, String detail, View.OnClickListener listener) {
+        int icon = 0;
+        if (title.startsWith("📁 ")) {
+            icon = R.drawable.ic_file_manager_folder;
+            title = title.substring("📁 ".length());
+        } else if (title.startsWith("📄 ")) {
+            icon = R.drawable.ic_file_manager_file;
+            title = title.substring("📄 ".length());
+        }
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(dp(20), dp(10), dp(18), dp(10));
@@ -111,6 +134,10 @@ abstract class FeatureActivity extends Activity {
                 0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f));
 
         TextView name = text(title, 17, Color.WHITE);
+        if (icon != 0) {
+            name.setCompoundDrawablesWithIntrinsicBounds(icon, 0, 0, 0);
+            name.setCompoundDrawablePadding(dp(10));
+        }
         name.setTypeface(Typeface.DEFAULT_BOLD);
         name.setSingleLine(true);
         name.setEllipsize(TextUtils.TruncateAt.END);
@@ -254,6 +281,12 @@ abstract class FeatureActivity extends Activity {
                 openFeaturePage(WALLPAPER_UPLOAD);
             }
         });
+        addAction("文件管理", "浏览设备存储空间中的文件", new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                openFeaturePage(FILE_MANAGER);
+            }
+        });
         addAction("重置首页壁纸", "恢复内置默认背景图", new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -274,6 +307,109 @@ abstract class FeatureActivity extends Activity {
         addInfo("应用目的\n提供简洁、可自定义且适合遥控器操作的应用入口。");
         addInfo("Android 兼容性\n支持 Android 4.0（API 14）及以上；当前目标版本为 Android 15（API 35）。");
         addInfo("作者\nPENG");
+    }
+
+    protected void showFileManager() {
+        if (requiresStoragePermission()) {
+            requestPermissions(new String[]{
+                    Manifest.permission.READ_EXTERNAL_STORAGE,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+            }, REQUEST_STORAGE_ACCESS);
+            return;
+        }
+        storageRoots = new ArrayList<>();
+        Set<String> paths = new HashSet<>();
+        addStorageRoot(Environment.getExternalStorageDirectory(), paths);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            for (File appDirectory : getExternalFilesDirs(null)) {
+                File root = appDirectory;
+                for (int level = 0; level < 4 && root != null; level++) root = root.getParentFile();
+                addStorageRoot(root, paths);
+            }
+        }
+        showStorageRoots();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_STORAGE_ACCESS) {
+            if (grantResults.length > 0
+                    && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                showFileManager();
+            } else {
+                storageRoots = new ArrayList<>();
+                storageRoots.add(transferDirectory());
+                showStorageRoots();
+            }
+        }
+    }
+
+    private boolean requiresStoragePermission() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                && Build.VERSION.SDK_INT <= Build.VERSION_CODES.P
+                && checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void addStorageRoot(File root, Set<String> paths) {
+        if (root == null || !root.isDirectory()) return;
+        try {
+            if (paths.add(root.getCanonicalPath())) storageRoots.add(root);
+        } catch (IOException ignored) {
+        }
+    }
+
+    private File transferDirectory() {
+        File downloads = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+        return new File(downloads == null ? getFilesDir() : downloads, "PENG");
+    }
+
+    private void showStorageRoots() {
+        showPage("文件管理", "选择存储空间");
+        for (final File root : storageRoots) {
+            addAction("存储空间", root.getAbsolutePath(), v -> {
+                activeStorageRoot = root;
+                showDirectory(root);
+            });
+        }
+    }
+
+    private void showDirectory(File directory) {
+        currentDirectory = directory;
+        showPage("文件管理", directory.getAbsolutePath());
+        addAction(directory.equals(activeStorageRoot) ? "返回存储空间" : "返回上一级",
+                "", v -> {
+                    if (directory.equals(activeStorageRoot)) showStorageRoots();
+                    else showDirectory(directory.getParentFile());
+                });
+        File[] children = directory.listFiles();
+        if (children == null) { addInfo("无法读取此目录"); return; }
+        Arrays.sort(children, new Comparator<File>() {
+            @Override
+            public int compare(File left, File right) {
+                if (left.isDirectory() != right.isDirectory()) {
+                    return left.isDirectory() ? -1 : 1;
+                }
+                return left.getName().compareToIgnoreCase(right.getName());
+            }
+        });
+        for (final File child : children) addAction(
+                (child.isDirectory() ? "📁 " : "📄 ") + child.getName(),
+                child.isDirectory() ? "目录" : child.length() / 1024 + " KB",
+                v -> { if (child.isDirectory()) showDirectory(child); else openFile(child); });
+    }
+
+    private void openFile(File file) {
+        Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".files", file);
+        Intent intent = new Intent(Intent.ACTION_VIEW).setDataAndType(uri, "*/*")
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        try {
+            startActivity(intent);
+        } catch (android.content.ActivityNotFoundException ignored) {
+            Toast.makeText(this, "未找到可打开此文件的应用", Toast.LENGTH_SHORT).show();
+        }
     }
 
     protected void showWallpaperUpload() {

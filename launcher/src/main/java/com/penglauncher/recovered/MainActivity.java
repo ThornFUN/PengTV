@@ -206,6 +206,8 @@ public final class MainActivity extends FeatureActivity {
             about();
         } else if (WALLPAPER_UPLOAD.equals(page)) {
             showWallpaperUpload();
+        } else if (FILE_MANAGER.equals(page)) {
+            showFileManager();
         } else {
             settings();
         }

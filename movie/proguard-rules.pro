@@ -1,0 +1,3 @@
+-dontwarn java.awt.Color
+-dontwarn java.awt.Font
+-dontwarn javax.swing.plaf.FontUIResource
