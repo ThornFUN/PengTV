@@ -878,13 +878,17 @@ public final class MainActivity extends FeatureActivity {
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle(app.label)
                 .setItems(new String[]{"卸载"}, (ignoredDialog, which) -> {
-                    Intent uninstall = new Intent(Intent.ACTION_UNINSTALL_PACKAGE);
-                    uninstall.setData(Uri.parse("package:" + app.resolveInfo.activityInfo.packageName));
-                    startAfterDialogDismiss((AlertDialog) ignoredDialog, uninstall);
+                    startAfterDialogDismiss((AlertDialog) ignoredDialog, uninstallIntent(app));
                 })
                 .create();
         applyDialogFocusStyle(dialog);
         dialog.show();
+    }
+
+    private Intent uninstallIntent(AppChoice app) {
+        Intent uninstall = new Intent(Intent.ACTION_UNINSTALL_PACKAGE);
+        uninstall.setData(Uri.parse("package:" + app.resolveInfo.activityInfo.packageName));
+        return uninstall;
     }
 
     private void startAfterDialogDismiss(final AlertDialog dialog, final Intent intent) {
