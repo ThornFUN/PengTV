@@ -133,7 +133,7 @@ abstract class FeatureActivity extends Activity {
     }
 
     protected void addAction(String title, String detail, View.OnClickListener listener,
-            View.OnLongClickListener longClickListener) {
+            View.OnKeyListener keyListener) {
         int icon = 0;
         if (title.startsWith("📁 ")) {
             icon = R.drawable.ic_file_manager_folder;
@@ -148,8 +148,8 @@ abstract class FeatureActivity extends Activity {
         setBackgroundCompat(row, interactiveBackground());
         applyTvFocusFeedback(row);
         row.setOnClickListener(listener);
-        if (longClickListener != null) {
-            row.setOnLongClickListener(longClickListener);
+        if (keyListener != null) {
+            row.setOnKeyListener(keyListener);
         }
 
         LinearLayout textBlock = new LinearLayout(this);
@@ -422,9 +422,12 @@ abstract class FeatureActivity extends Activity {
         });
         for (final File child : children) {
             if (child.isDirectory()) {
-                addAction("📁 " + child.getName(), "目录（长按可重命名或删除）",
-                        v -> showDirectory(child), v -> {
-                            showDirectoryActions(child);
+                addAction("📁 " + child.getName(), "目录",
+                        v -> showDirectory(child), (view, keyCode, event) -> {
+                            if (keyCode != android.view.KeyEvent.KEYCODE_MENU) return false;
+                            if (event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+                                showDirectoryActions(child);
+                            }
                             return true;
                         });
             } else {
