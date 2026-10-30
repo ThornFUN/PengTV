@@ -9,6 +9,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.viewpager.widget.ViewPager;
 
+import com.github.tvbox.osc.util.ScreenUtils;
+
 /**
  * @author acer
  * @date 2018/7/24
@@ -37,6 +39,12 @@ public class NoScrollViewPager extends ViewPager {
 
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
-        return false;
+        return ScreenUtils.isTv(getContext()) ? false : super.onTouchEvent(ev);
+    }
+
+    // Swifly 修正首页触屏左右滑动会移位
+    @Override
+    public boolean onInterceptTouchEvent(MotionEvent ev) {
+        return ScreenUtils.isTv(getContext()) ? false : super.onInterceptTouchEvent(ev);
     }
 }

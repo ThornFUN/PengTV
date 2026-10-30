@@ -6,6 +6,7 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
         maven { url "https://jitpack.io" }
+        maven { url "https://chaquo.com/maven" }
     }
 }
 
@@ -17,6 +18,7 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven { url "https://jitpack.io" }
+        maven { url "https://chaquo.com/maven" }
     }
 }
 
@@ -24,4 +26,5 @@ rootProject.name = "PengTV"
 include(":launcher")
 include(":live-show")
 include(":movie")
-include(":movie-player")
+include(":movie:quickjs")
+include(":movie:pyramid")

@@ -1,18 +1,19 @@
 package com.github.tvbox.osc.util;
 
 import android.content.Context;
+import android.util.Log;
 
+import com.blankj.utilcode.util.ToastUtils;
 import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.bean.IJKCode;
-import com.github.tvbox.osc.player.IjkMediaPlayer;
+import com.github.tvbox.osc.player.IjkmPlayer;
 import com.github.tvbox.osc.player.render.SurfaceRenderViewFactory;
 import com.orhanobut.hawk.Hawk;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import tv.danmaku.ijk.media.player.IjkLibLoader;
-import xyz.doikki.videoplayer.exo.ExoMediaPlayerFactory;
+import tv.danmaku.ijk.media.player.IjkMediaPlayer;
 import xyz.doikki.videoplayer.player.AndroidMediaPlayerFactory;
 import xyz.doikki.videoplayer.player.PlayerFactory;
 import xyz.doikki.videoplayer.player.VideoView;
@@ -20,57 +21,51 @@ import xyz.doikki.videoplayer.render.RenderViewFactory;
 import xyz.doikki.videoplayer.render.TextureRenderViewFactory;
 
 public class PlayerHelper {
+    private static volatile boolean ijkAvailable;
+
     public static void updateCfg(VideoView videoView, JSONObject playerCfg) {
+        updateCfg(videoView, playerCfg, -1);
+    }
+
+    public static void updateCfg(VideoView videoView, JSONObject playerCfg, int forcePlayerType) {
         int playerType = Hawk.get(HawkConfig.PLAY_TYPE, 0);
         int renderType = Hawk.get(HawkConfig.PLAY_RENDER, 0);
         String ijkCode = Hawk.get(HawkConfig.IJK_CODEC, "软解码");
         int scale = Hawk.get(HawkConfig.PLAY_SCALE, 0);
         try {
             playerType = playerCfg.getInt("pl");
-            renderType = playerCfg.getInt("pr");
+            //就我遇到的问题是 Exo 在 TextureView 黑屏 调整设置中的渲染模式无法生效
+            //renderType = playerCfg.getInt("pr");//该值无法修改，一旦确认该值后续无法进行修改 就是在设置选的 类型无法应用
             ijkCode = playerCfg.getString("ijk");
             scale = playerCfg.getInt("sc");
         } catch (JSONException e) {
             e.printStackTrace();
         }
+        if (forcePlayerType >= 0) playerType = forcePlayerType;
+        if (playerType != 0 && !ijkAvailable) playerType = 0;
         IJKCode codec = ApiConfig.get().getIJKCodec(ijkCode);
         PlayerFactory playerFactory;
         if (playerType == 1) {
-            playerFactory = new PlayerFactory<IjkMediaPlayer>() {
+            playerFactory = new PlayerFactory<IjkmPlayer>() {
                 @Override
-                public IjkMediaPlayer createPlayer(Context context) {
-                    return new IjkMediaPlayer(context, codec);
+                public IjkmPlayer createPlayer(Context context) {
+                    return new IjkmPlayer(context, codec);
                 }
             };
-            try {
-                tv.danmaku.ijk.media.player.IjkMediaPlayer.loadLibrariesOnce(new IjkLibLoader() {
-                    @Override
-                    public void loadLibrary(String s) throws UnsatisfiedLinkError, SecurityException {
-                        try {
-                            System.loadLibrary(s);
-                        } catch (Throwable th) {
-                            th.printStackTrace();
-                        }
-                    }
-                });
-            } catch (Throwable th) {
-                th.printStackTrace();
-            }
-        } else if (playerType == 2) {
-            playerFactory = ExoMediaPlayerFactory.create();
         } else {
-            playerFactory = AndroidMediaPlayerFactory.create();
+            playerFactory = playerType == 0 ? AndroidMediaPlayerFactory.create() : createIjkPlayerFactory(codec);
         }
-        RenderViewFactory renderViewFactory = null;
+        RenderViewFactory renderViewFactory;
         switch (renderType) {
+            case 1:
+                renderViewFactory = SurfaceRenderViewFactory.create();
+                break;
             case 0:
             default:
                 renderViewFactory = TextureRenderViewFactory.create();
                 break;
-            case 1:
-                renderViewFactory = SurfaceRenderViewFactory.create();
-                break;
         }
+
         videoView.setPlayerFactory(playerFactory);
         videoView.setRenderViewFactory(renderViewFactory);
         videoView.setScreenScaleType(scale);
@@ -78,33 +73,9 @@ public class PlayerHelper {
 
     public static void updateCfg(VideoView videoView) {
         int playType = Hawk.get(HawkConfig.PLAY_TYPE, 0);
+        if (playType != 0 && !ijkAvailable) playType = 0;
         PlayerFactory playerFactory;
-        if (playType == 1) {
-            playerFactory = new PlayerFactory<IjkMediaPlayer>() {
-                @Override
-                public IjkMediaPlayer createPlayer(Context context) {
-                    return new IjkMediaPlayer(context, null);
-                }
-            };
-            try {
-                tv.danmaku.ijk.media.player.IjkMediaPlayer.loadLibrariesOnce(new IjkLibLoader() {
-                    @Override
-                    public void loadLibrary(String s) throws UnsatisfiedLinkError, SecurityException {
-                        try {
-                            System.loadLibrary(s);
-                        } catch (Throwable th) {
-                            th.printStackTrace();
-                        }
-                    }
-                });
-            } catch (Throwable th) {
-                th.printStackTrace();
-            }
-        } else if (playType == 2) {
-            playerFactory = ExoMediaPlayerFactory.create();
-        } else {
-            playerFactory = AndroidMediaPlayerFactory.create();
-        }
+        playerFactory = playType == 0 ? AndroidMediaPlayerFactory.create() : createIjkPlayerFactory(null);
         int renderType = Hawk.get(HawkConfig.PLAY_RENDER, 0);
         RenderViewFactory renderViewFactory = null;
         switch (renderType) {
@@ -120,35 +91,40 @@ public class PlayerHelper {
         videoView.setRenderViewFactory(renderViewFactory);
     }
 
-
     public static void init() {
         try {
-            tv.danmaku.ijk.media.player.IjkMediaPlayer.loadLibrariesOnce(new IjkLibLoader() {
-                @Override
-                public void loadLibrary(String s) throws UnsatisfiedLinkError, SecurityException {
-                    try {
-                        System.loadLibrary(s);
-                    } catch (Throwable th) {
-                        th.printStackTrace();
-                    }
-                }
-            });
-        } catch (Throwable th) {
-            th.printStackTrace();
+            IjkMediaPlayer.loadLibrariesOnce(null);
+            ijkAvailable = true;
+        } catch (UnsatisfiedLinkError e) {
+            ijkAvailable = false;
+            Log.w("PlayerHelper", "IJK native libraries are unavailable; using the system player", e);
         }
+    }
+
+    private static PlayerFactory<IjkmPlayer> createIjkPlayerFactory(final IJKCode codec) {
+        return new PlayerFactory<IjkmPlayer>() {
+            @Override
+            public IjkmPlayer createPlayer(Context context) {
+                return new IjkmPlayer(context, codec);
+            }
+        };
     }
 
     public static String getPlayerName(int playType) {
         if (playType == 1) {
-            return "IJK播放器";
+            return "IJK";
         } else if (playType == 2) {
-            return "Exo播放器";
+            return "Exo";
+        } else if (playType == 3) {
+            return "阿里";
         } else if (playType == 10) {
-            return "MXPlayer";
+            return "MX";
         } else if (playType == 11) {
             return "Reex";
+        } else if (playType == 12) {
+            return "Kodi";
         } else {
-            return "系统播放器";
+            return "系统";
         }
     }
 
@@ -184,4 +160,13 @@ public class PlayerHelper {
         }
         return scaleText;
     }
+
+    public static String getRootCauseMessage(Throwable th) {
+        for (int i=0; i<10; i++) {
+            if (th.getCause() == null) return th.getLocalizedMessage();
+            else th = th.getCause();
+        }
+        return th.getLocalizedMessage();
+    }
+
 }

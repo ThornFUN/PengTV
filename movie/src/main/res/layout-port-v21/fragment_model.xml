@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipToPadding="false"
+    android:fillViewport="true"
+    android:padding="16dp"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            android:text="@string/act_settings"
+            android:textColor="@android:color/white"
+            android:textSize="28sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/llDebug"
+            style="@style/MobileSettingRow"
+            android:visibility="gone">
+            <TextView style="@style/MobileSettingLabel" android:text="调试模式" />
+            <TextView android:id="@+id/tvDebugOpen" style="@style/MobileSettingValue" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/llApi"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="@string/mn_config" />
+            <TextView android:id="@+id/tvApi" style="@style/MobileSettingValue" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:text="›" android:textColor="@android:color/white" android:textSize="24sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/llApiHistory"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="配置历史" />
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" />
+            <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/hm_history" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="8dp"
+            android:text="@string/act_home"
+            android:textColor="@android:color/white"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/llHomeApi"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="数据源" />
+            <TextView android:id="@+id/tvHomeApi" style="@style/MobileSettingValue" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@android:color/white" android:textSize="24sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/showPreview"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="窗口预览" />
+            <TextView android:id="@+id/showPreviewText" style="@style/MobileSettingValue" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/llHomeShow"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="数据源显示" />
+            <TextView android:id="@+id/tvHomeShow" style="@style/MobileSettingValue" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/llHomeIcon"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="按钮位置" />
+            <TextView android:id="@+id/tvHomeIcon" style="@style/MobileSettingValue" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@android:color/white" android:textSize="24sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/llHomeRec"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="推荐" />
+            <TextView android:id="@+id/tvHomeRec" style="@style/MobileSettingValue" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@android:color/white" android:textSize="24sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/llHomeNum"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="历史条数" />
+            <TextView android:id="@+id/tvHomeNum" style="@style/MobileSettingValue" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@android:color/white" android:textSize="24sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/llHomeLive"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="启动时进直播" />
+            <TextView android:id="@+id/tvHomeDefaultShow" style="@style/MobileSettingValue" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="8dp"
+            android:text="@string/act_player"
+            android:textColor="@android:color/white"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/llScale"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="画面缩放" />
+            <TextView android:id="@+id/tvScaleType" style="@style/MobileSettingValue" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@android:color/white" android:textSize="24sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/llBackgroundPlay"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="后台播放" />
+            <TextView android:id="@+id/tvBackgroundPlayType" style="@style/MobileSettingValue" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/llPlay"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="播放器" />
+            <TextView android:id="@+id/tvPlay" style="@style/MobileSettingValue" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@android:color/white" android:textSize="24sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/llMediaSetting"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="播放器设置" />
+            <TextView android:id="@+id/tvMediaCodec" style="@style/MobileSettingValue" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@android:color/white" android:textSize="24sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/llVideoPurify"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="广告过滤" />
+            <TextView android:id="@+id/tvVideoPurifyText" style="@style/MobileSettingValue" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="8dp"
+            android:text="系统"
+            android:textColor="@android:color/white"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/llLocale"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="语言" />
+            <TextView android:id="@+id/tvLocale" style="@style/MobileSettingValue" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@android:color/white" android:textSize="24sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/llTheme"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="主题" />
+            <TextView android:id="@+id/tvTheme" style="@style/MobileSettingValue" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@android:color/white" android:textSize="24sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/llWp"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="换张壁纸" />
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@android:color/white" android:textSize="24sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/llWpRecovery"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="重置壁纸" />
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@android:color/white" android:textSize="24sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/llRender"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="渲染方式" />
+            <TextView android:id="@+id/tvRenderType" style="@style/MobileSettingValue" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@android:color/white" android:textSize="24sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/llSearchView"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="搜索展示" />
+            <TextView android:id="@+id/tvSearchView" style="@style/MobileSettingValue" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@android:color/white" android:textSize="24sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/llParseWebVew"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="嗅探 WebView" />
+            <TextView android:id="@+id/tvParseWebView" style="@style/MobileSettingValue" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@android:color/white" android:textSize="24sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/llDns"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="安全 DNS" />
+            <TextView android:id="@+id/tvDns" style="@style/MobileSettingValue" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@android:color/white" android:textSize="24sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/llBackup"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="数据备份还原" />
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@android:color/white" android:textSize="24sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/llReset"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="重置" />
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@android:color/white" android:textSize="24sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/showFastSearch"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="聚搜" />
+            <TextView android:id="@+id/showFastSearchText" style="@style/MobileSettingValue" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/llAbout"
+            style="@style/MobileSettingRow">
+            <TextView style="@style/MobileSettingLabel" android:text="关于" />
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@android:color/white" android:textSize="24sp" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

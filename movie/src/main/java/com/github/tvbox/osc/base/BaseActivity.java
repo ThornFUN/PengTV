@@ -2,8 +2,10 @@ package com.github.tvbox.osc.base;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
+import android.content.res.TypedArray;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
@@ -11,26 +13,35 @@ import android.os.Bundle;
 import android.os.Looper;
 import android.util.DisplayMetrics;
 import android.view.View;
+import android.view.WindowManager;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.PermissionChecker;
-
+import com.blankj.utilcode.util.ActivityUtils;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.callback.EmptyCallback;
 import com.github.tvbox.osc.callback.LoadingCallback;
+import com.github.tvbox.osc.ui.activity.DetailActivity;
 import com.github.tvbox.osc.util.AppManager;
+import com.github.tvbox.osc.util.HawkConfig;
+import com.github.tvbox.osc.util.LocaleHelper;
+import com.github.tvbox.osc.util.ScreenUtils;
 import com.kingja.loadsir.callback.Callback;
 import com.kingja.loadsir.core.LoadService;
 import com.kingja.loadsir.core.LoadSir;
+import com.orhanobut.hawk.Hawk;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
+import io.github.inflationx.viewpump.ViewPumpContextWrapper;
+import me.jessyan.autosize.AutoSize;
 import me.jessyan.autosize.AutoSizeCompat;
 import me.jessyan.autosize.internal.CustomAdapt;
+import xyz.doikki.videoplayer.util.CutoutUtil;
 
 /**
  * @author pj567
@@ -42,6 +53,21 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
     private LoadService mLoadService;
 
     private static float screenRatio = -100.0f;
+
+    // takagen99 : Fix for Locale change not persist on higher Android version
+    @Override
+    protected void attachBaseContext(Context base) {
+        Context newBase = base;
+        if (App.viewPump != null) {
+            newBase = ViewPumpContextWrapper.wrap(base, App.viewPump);
+        }
+
+        if (Hawk.get(HawkConfig.HOME_LOCALE, 0) == 0) {
+            super.attachBaseContext(LocaleHelper.onAttach(newBase, "zh"));
+        } else {
+            super.attachBaseContext(LocaleHelper.onAttach(newBase, ""));
+        }
+    }
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -56,21 +82,77 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
         } catch (Throwable th) {
             th.printStackTrace();
         }
+
+        // takagen99 : Set Theme Color
+        if (Hawk.get(HawkConfig.THEME_SELECT, 0) == 0) {
+            setTheme(R.style.NetfxTheme);
+        } else if (Hawk.get(HawkConfig.THEME_SELECT, 0) == 1) {
+            setTheme(R.style.DoraeTheme);
+        } else if (Hawk.get(HawkConfig.THEME_SELECT, 0) == 2) {
+            setTheme(R.style.PepsiTheme);
+        } else if (Hawk.get(HawkConfig.THEME_SELECT, 0) == 3) {
+            setTheme(R.style.NarutoTheme);
+        } else if (Hawk.get(HawkConfig.THEME_SELECT, 0) == 4) {
+            setTheme(R.style.MinionTheme);
+        } else if (Hawk.get(HawkConfig.THEME_SELECT, 0) == 5) {
+            setTheme(R.style.YagamiTheme);
+        } else {
+            setTheme(R.style.SakuraTheme);
+        }
+
         super.onCreate(savedInstanceState);
         setContentView(getLayoutResID());
         mContext = this;
+        CutoutUtil.adaptCutoutAboveAndroidP(mContext, true);//设置刘海
         AppManager.getInstance().addActivity(this);
         init();
+        setScreenOn();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        hideSysBar();
+        if (isTvMode()) {
+            hideSystemUI(true);
+        } else {
+            showSystemUI();
+        }
         changeWallpaper(false);
     }
 
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        AutoSize.autoConvertDensity(this, getSizeInDp(), isBaseOnWidth());
+    }
+
+    // takagen99 : Check for Gesture or 3-Buttons NavBar
+    // 0 : 3-Button NavBar
+    // 1 : 2-Button NavBar (Android P)
+    // 2 : Gesture full screen
+    public static int isEdgeToEdgeEnabled(Context context) {
+        Resources resources = context.getResources();
+        int resourceId = resources.getIdentifier("config_navBarInteractionMode", "integer", "android");
+        if (resourceId > 0) {
+            return resources.getInteger(resourceId);
+        }
+        return 0;
+    }
+
     public void hideSysBar() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            int uiOptions = getWindow().getDecorView().getSystemUiVisibility();
+            uiOptions |= View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+            //    uiOptions |= View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
+            uiOptions |= View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN;
+            //    uiOptions |= View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
+            uiOptions |= View.SYSTEM_UI_FLAG_FULLSCREEN;
+            uiOptions |= View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+            getWindow().getDecorView().setSystemUiVisibility(uiOptions);
+        }
+    }
+
+    public void vidHideSysBar() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             int uiOptions = getWindow().getDecorView().getSystemUiVisibility();
             uiOptions |= View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
@@ -80,6 +162,37 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
             uiOptions |= View.SYSTEM_UI_FLAG_FULLSCREEN;
             uiOptions |= View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
             getWindow().getDecorView().setSystemUiVisibility(uiOptions);
+        }
+    }
+
+    public void hideSystemUI(boolean shownavbar) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            int uiVisibility = getWindow().getDecorView().getSystemUiVisibility();
+            uiVisibility |= View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+            uiVisibility |= View.SYSTEM_UI_FLAG_LOW_PROFILE;
+            uiVisibility |= View.SYSTEM_UI_FLAG_FULLSCREEN;
+            uiVisibility |= View.SYSTEM_UI_FLAG_IMMERSIVE;
+            uiVisibility |= View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+            if (!shownavbar) {
+                uiVisibility |= View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
+                uiVisibility |= View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
+            }
+            getWindow().getDecorView().setSystemUiVisibility(uiVisibility);
+            // set content behind navigation bar
+//        getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
+        }
+    }
+
+    public void showSystemUI() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            int uiVisibility = getWindow().getDecorView().getSystemUiVisibility();
+            uiVisibility &= ~View.SYSTEM_UI_FLAG_LOW_PROFILE;
+            uiVisibility &= ~View.SYSTEM_UI_FLAG_FULLSCREEN;
+            uiVisibility &= ~View.SYSTEM_UI_FLAG_IMMERSIVE;
+            uiVisibility &= ~View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+            uiVisibility &= ~View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
+            uiVisibility &= ~View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
+            getWindow().getDecorView().setSystemUiVisibility(uiVisibility);
         }
     }
 
@@ -119,6 +232,13 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
         if (mLoadService != null) {
             mLoadService.showCallback(LoadingCallback.class);
         }
+    }
+
+    protected boolean isLoading() {
+        if (mLoadService != null && mLoadService.getCurrentCallback() != null) {
+            return mLoadService.getCurrentCallback().equals(LoadingCallback.class);
+        }
+        return false;
     }
 
     protected void showEmpty() {
@@ -168,6 +288,9 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
 
     @Override
     public float getSizeInDp() {
+        if (!isTvMode()) {
+            return super.getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT ? 360 : 640;
+        }
         return isBaseOnWidth() ? 1280 : 720;
     }
 
@@ -176,11 +299,57 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
         return !(screenRatio >= 4.0f);
     }
 
+    public boolean supportsTouch() {
+        return getPackageManager().hasSystemFeature("android.hardware.touchscreen");
+    }
+
+    public boolean isTvMode() {
+        return ScreenUtils.isTv(this);
+    }
+
+    public boolean isPortrait() {
+        return super.getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT;
+    }
+
+    public int getMobileSpanCount(int portraitSpanCount, int landscapeSpanCount) {
+        if (isTvMode()) {
+            return 0;
+        }
+        return isPortrait() ? portraitSpanCount : landscapeSpanCount;
+    }
+
+    public void setScreenBrightness(float amt) {
+        WindowManager.LayoutParams lparams = getWindow().getAttributes();
+        lparams.screenBrightness = amt;
+        getWindow().setAttributes(lparams);
+    }
+
+    public void setScreenOn() {
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+    }
+
+    public void setScreenOff() {
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+    }
+
+    // takagen99: Added Theme Color
+    public int getThemeColor() {
+        TypedArray a = mContext.obtainStyledAttributes(R.styleable.themeColor);
+        int themeColor = a.getColor(R.styleable.themeColor_color_theme, 0);
+        return themeColor;
+    }
+
     protected static BitmapDrawable globalWp = null;
 
     public void changeWallpaper(boolean force) {
-        if (!force && globalWp != null)
+        if (!isTvMode()) {
+            getWindow().setBackgroundDrawableResource(android.R.color.black);
+            return;
+        }
+        if (!force && globalWp != null) {
             getWindow().setBackgroundDrawable(globalWp);
+            return;
+        }
         try {
             File wp = new File(getFilesDir().getAbsolutePath() + "/wp");
             if (wp.exists()) {
@@ -194,25 +363,22 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
                 int picWidth = 1080;
                 int scaleX = imageWidth / picWidth;
                 int scaleY = imageHeight / picHeight;
-                int scale = 1;
-                if (scaleX > scaleY && scaleY >= 1) {
-                    scale = scaleX;
-                }
-                if (scaleX < scaleY && scaleX >= 1) {
-                    scale = scaleY;
-                }
+                int scale = Math.max(Math.max(scaleX, scaleY), 1);
                 opts.inJustDecodeBounds = false;
                 // 采样率
                 opts.inSampleSize = scale;
                 globalWp = new BitmapDrawable(BitmapFactory.decodeFile(wp.getAbsolutePath(), opts));
+            } else {
+                globalWp = null;
             }
         } catch (Throwable throwable) {
             throwable.printStackTrace();
             globalWp = null;
         }
-        if (globalWp != null)
+        if (globalWp != null) {
             getWindow().setBackgroundDrawable(globalWp);
-        else
+        } else {
             getWindow().setBackgroundDrawableResource(R.drawable.app_bg);
+        }
     }
 }

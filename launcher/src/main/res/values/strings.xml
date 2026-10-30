@@ -3,5 +3,5 @@
     <string name="recovery_title">Dangbei Launcher recovery base</string>
     <string name="recovery_description">This runnable shell is intentionally separate from the recovered code. The original APK source is preserved for incremental restoration rather than compiled unchanged.</string>
     <string name="recovery_source_location">Recovered source: recovered/apk-decompile/sources\nRecovered resources: recovered/apk-decompile/resources</string>
-    <string name="recovery_next_step">Read RECOVERY.md before moving a feature into app/. Restore one page and its dependencies at a time.</string>
+    <string name="recovery_next_step">Read docs/RECOVERY.md before moving a feature into launcher/. Restore one page and its dependencies at a time.</string>
 </resources>

@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/filterBtn"
+            android:layout_width="64dp"
+            android:layout_height="48dp"
+            android:background="@drawable/shape_user_focus"
+            android:gravity="center"
+            android:text="@string/global_search"
+            android:textColor="@android:color/white"
+            android:textSize="14sp" />
+
+        <com.github.tvbox.osc.ui.tv.widget.CustomEditText
+            android:id="@+id/etSearch"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:background="@drawable/input_search"
+            android:hint="@string/act_search_txt"
+            android:imeOptions="actionSearch"
+            android:inputType="text"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:singleLine="true"
+            android:textColor="@android:color/white"
+            android:textColorHint="#70FFFFFF"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/tvSearch"
+            android:layout_width="56dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/shape_user_focus"
+            android:gravity="center"
+            android:text="@string/act_search"
+            android:textColor="@android:color/white"
+            android:textSize="14sp" />
+
+        <ImageView
+            android:id="@+id/tvSearchCheckbox"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="4dp"
+            android:background="@drawable/shape_user_focus"
+            android:padding="12dp"
+            android:src="@drawable/icon_filter" />
+    </LinearLayout>
+
+    <com.github.tvbox.osc.ui.tv.widget.SearchKeyboard
+        android:id="@+id/keyBoardRoot"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/llWord"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/mHotSearch_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/act_search_trend"
+            android:textColor="@android:color/white"
+            android:textSize="16sp" />
+
+        <com.owen.tvrecyclerview.widget.TvRecyclerView
+            android:id="@+id/mGridViewWord"
+            android:layout_width="match_parent"
+            android:layout_height="72dp"
+            app:tv_horizontalSpacingWithMargins="8dp"
+            app:tv_verticalSpacingWithMargins="4dp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/llLayout"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <RelativeLayout
+            android:id="@+id/search_tips"
+            android:layout_width="match_parent"
+            android:layout_height="48dp">
+
+            <TextView
+                android:id="@+id/title_history"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
+                android:text="搜索历史"
+                android:textColor="@android:color/white"
+                android:textSize="16sp" />
+
+            <ImageView
+                android:id="@+id/clear_history"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_alignParentEnd="true"
+                android:background="@drawable/shape_user_focus"
+                android:padding="12dp"
+                android:src="@drawable/icon_delete" />
+        </RelativeLayout>
+
+        <com.yang.flowlayoutlibrary.FlowLayout
+            android:id="@+id/tv_history"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:backgroundResource="@drawable/shape_user_focus"
+            app:horizontalSpacing="8dp"
+            app:itemColor="@android:color/white"
+            app:itemSize="14sp"
+            app:textPaddingH="10dp"
+            app:textPaddingV="8dp"
+            app:verticalSpacing="8dp" />
+
+        <TextView
+            android:id="@+id/tvClear"
+            android:layout_width="1dp"
+            android:layout_height="1dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/tvAddress"
+            android:layout_width="1dp"
+            android:layout_height="1dp"
+            android:visibility="gone" />
+
+        <ImageView
+            android:id="@+id/ivQRCode"
+            android:layout_width="1dp"
+            android:layout_height="1dp"
+            android:visibility="gone" />
+
+        <com.owen.tvrecyclerview.widget.TvRecyclerView
+            android:id="@+id/mGridView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="8dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:paddingBottom="8dp"
+            app:tv_horizontalSpacingWithMargins="8dp"
+            app:tv_selectedItemIsCentered="false"
+            app:tv_verticalSpacingWithMargins="8dp" />
+    </LinearLayout>
+</LinearLayout>

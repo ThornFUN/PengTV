@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="8dp"
+    android:paddingTop="4dp"
+    android:paddingEnd="8dp"
+    android:paddingBottom="8dp">
+
+    <LinearLayout
+        android:id="@+id/tvUserHome"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:id="@+id/tvHistory"
+            style="@style/MobileHomeButton">
+
+            <ImageView android:src="@drawable/hm_history" style="@style/MobileHomeIcon" />
+            <TextView android:text="@string/hm_hist" style="@style/MobileHomeText" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/tvLive"
+            style="@style/MobileHomeButton">
+
+            <ImageView android:src="@drawable/hm_live" style="@style/MobileHomeIcon" />
+            <TextView android:text="@string/hm_live" style="@style/MobileHomeText" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/tvSearch"
+            style="@style/MobileHomeButton">
+
+            <ImageView android:src="@drawable/hm_search" style="@style/MobileHomeIcon" />
+            <TextView android:text="@string/hm_search" style="@style/MobileHomeText" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/tvFavorite"
+            style="@style/MobileHomeButton">
+
+            <ImageView android:src="@drawable/hm_fav" style="@style/MobileHomeIcon" />
+            <TextView android:text="@string/hm_fav" style="@style/MobileHomeText" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:id="@+id/tvPush"
+            style="@style/MobileHomeButton">
+
+            <ImageView android:src="@drawable/hm_push" style="@style/MobileHomeIcon" />
+            <TextView android:text="@string/hm_push" style="@style/MobileHomeText" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/tvDrive"
+            style="@style/MobileHomeButton">
+
+            <ImageView android:src="@drawable/hm_folder" style="@style/MobileHomeIcon" />
+            <TextView android:text="@string/hm_file" style="@style/MobileHomeText" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/tvSetting"
+            style="@style/MobileHomeButton">
+
+            <ImageView android:src="@drawable/hm_settings" style="@style/MobileHomeIcon" />
+            <TextView android:text="@string/hm_setting" style="@style/MobileHomeText" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <com.owen.tvrecyclerview.widget.TvRecyclerView
+        android:id="@+id/tvHotListForGrid"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:padding="4dp"
+        android:visibility="gone"
+        app:tv_horizontalSpacingWithMargins="8dp"
+        app:tv_selectedItemIsCentered="false"
+        app:tv_verticalSpacingWithMargins="8dp" />
+
+    <com.owen.tvrecyclerview.widget.TvRecyclerView
+        android:id="@+id/tvHotListForLine"
+        android:layout_width="match_parent"
+        android:layout_height="220dp"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:orientation="horizontal"
+        android:padding="4dp"
+        app:tv_horizontalSpacingWithMargins="8dp"
+        app:tv_selectedItemIsCentered="false"
+        app:tv_verticalSpacingWithMargins="8dp" />
+</LinearLayout>

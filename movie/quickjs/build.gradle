@@ -1,0 +1,17 @@
+plugins {
+    id 'com.android.library'
+}
+
+android {
+    namespace "com.github.tvbox.osc.quickjs"
+    compileSdk rootProject.ext.pengTv.compileSdk
+
+    defaultConfig {
+        minSdk rootProject.ext.pengTv.apps.movie.minSdk
+        targetSdk rootProject.ext.pengTv.apps.movie.targetSdk
+    }
+}
+
+dependencies {
+    
+}

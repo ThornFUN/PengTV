@@ -1,6 +1,0 @@
-<resources>
-    <style name="AppTheme" parent="@android:style/Theme.Holo.NoActionBar">
-        <item name="android:windowActionModeOverlay">true</item>
-        <item name="android:windowBackground">@color/vod_background</item>
-    </style>
-</resources>

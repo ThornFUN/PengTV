@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:id="@+id/llLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="180dp"
+            android:orientation="horizontal">
+
+            <FrameLayout
+                android:layout_width="120dp"
+                android:layout_height="180dp">
+
+                <ImageView
+                    android:id="@+id/ivThumb"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop" />
+
+                <View
+                    android:id="@+id/previewPlayerPlace"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:visibility="gone" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:textColor="@android:color/white"
+                    android:textSize="22sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvSite"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:textColor="@color/color_FFFFFF_80"
+                    android:textSize="14sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:orientation="horizontal">
+
+                    <TextView android:id="@+id/tvYear" style="@style/MobileDetailMeta" />
+                    <TextView android:id="@+id/tvArea" style="@style/MobileDetailMeta" />
+                    <TextView android:id="@+id/tvLang" style="@style/MobileDetailMeta" />
+                    <TextView android:id="@+id/tvType" style="@style/MobileDetailMeta" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvActor"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:textColor="@color/color_FFFFFF_80"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/tvDirector"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:textColor="@color/color_FFFFFF_80"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/tvDes"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_marginTop="6dp"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="3"
+                    android:textColor="@color/color_FFFFFF_80"
+                    android:textSize="14sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal">
+
+            <TextView android:id="@+id/tvPlay" style="@style/MobileDetailAction" android:text="@string/det_play" />
+            <TextView android:id="@+id/tvQuickSearch" style="@style/MobileDetailAction" android:text="@string/det_search" />
+            <TextView android:id="@+id/tvCollect" style="@style/MobileDetailAction" android:text="@string/det_fav" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="horizontal">
+
+            <TextView android:id="@+id/tvSort" style="@style/MobileDetailAction" android:text="@string/det_sort" />
+            <TextView android:id="@+id/tvPush" style="@style/MobileDetailAction" android:text="@string/det_push" />
+            <TextView android:id="@+id/tvDesc" style="@style/MobileDetailAction" android:text="@string/det_desc" />
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/tvPlayUrl"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="end"
+            android:contentDescription="@string/det_url"
+            android:padding="12dp"
+            android:src="@drawable/button_detail_link" />
+
+        <LinearLayout
+            android:id="@+id/mEmptyPlaylist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/icon_empty" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="暂无播放数据"
+                android:textColor="@android:color/white"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+        <com.owen.tvrecyclerview.widget.TvRecyclerView
+            android:id="@+id/mGridViewFlag"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_marginTop="6dp"
+            android:clipToPadding="false"
+            app:tv_horizontalSpacingWithMargins="8dp"
+            app:tv_selectedItemIsCentered="false" />
+
+        <com.owen.tvrecyclerview.widget.TvRecyclerView
+            android:id="@+id/mSeriesGroupView"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_marginTop="6dp"
+            android:clipToPadding="false"
+            app:tv_horizontalSpacingWithMargins="8dp"
+            app:tv_selectedItemIsCentered="false" />
+
+        <com.owen.tvrecyclerview.widget.TvRecyclerView
+            android:id="@+id/mGridView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="8dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            app:tv_horizontalSpacingWithMargins="8dp"
+            app:tv_selectedItemIsCentered="false"
+            app:tv_verticalSpacingWithMargins="8dp" />
+    </LinearLayout>
+
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/previewPlayer"
+        android:layout_width="120dp"
+        android:layout_height="180dp"
+        android:layout_margin="12dp"
+        android:visibility="gone" />
+
+    <View
+        android:id="@+id/previewPlayerBlock"
+        android:layout_width="120dp"
+        android:layout_height="180dp"
+        android:layout_margin="12dp"
+        android:background="@drawable/button_detail_preview"
+        android:visibility="gone" />
+</FrameLayout>

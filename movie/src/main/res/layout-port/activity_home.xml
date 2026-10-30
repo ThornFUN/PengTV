@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp">
+
+    <LinearLayout
+        android:id="@+id/topLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingTop="8dp">
+
+        <TextView
+            android:id="@+id/tvName"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:background="@drawable/shape_toplayout_tvname"
+            android:ellipsize="end"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:singleLine="true"
+            android:text="@string/app_name"
+            android:textColor="@color/font_home_selector"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/tvFind"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/button_dialog_vod"
+            android:contentDescription="@string/hm_search"
+            android:focusable="true"
+            android:padding="12dp"
+            android:src="@drawable/hm_search" />
+
+        <ImageView
+            android:id="@+id/tvMenu"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/button_dialog_vod"
+            android:contentDescription="@string/hm_setting"
+            android:focusable="true"
+            android:padding="12dp"
+            android:src="@drawable/hm_settings" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/tvWifi"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/button_dialog_vod"
+            android:contentDescription="@string/app_name"
+            android:focusable="true"
+            android:padding="10dp"
+            android:src="@drawable/hm_wifi_no" />
+
+        <ImageView
+            android:id="@+id/tvStyle"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/button_dialog_vod"
+            android:contentDescription="@string/hm_style_grid"
+            android:focusable="true"
+            android:padding="10dp"
+            android:src="@drawable/hm_left_right" />
+
+        <ImageView
+            android:id="@+id/tvDrawer"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/button_dialog_vod"
+            android:contentDescription="@string/app_name"
+            android:focusable="true"
+            android:padding="10dp"
+            android:src="@drawable/hm_drawer" />
+
+        <TextView
+            android:id="@+id/tvDate"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:gravity="end|center_vertical"
+            android:singleLine="true"
+            android:textColor="@android:color/white"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/contentLayout"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <com.owen.tvrecyclerview.widget.TvRecyclerView
+            android:id="@+id/mGridViewCategory"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:clipToPadding="false"
+            android:focusable="true"
+            android:scrollbars="none" />
+
+        <com.github.tvbox.osc.ui.tv.widget.NoScrollViewPager
+            android:id="@+id/mViewPager"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+    </LinearLayout>
+</LinearLayout>

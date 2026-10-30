@@ -1,6 +1,6 @@
 # PENG Android TV 套件
 
-本工程包含三个可独立安装的应用：PENG 桌面、PENG TV 与 PENG影视。前两者面向电视遥控器操作；PENG影视同时支持电视遥控器与手机触控。已构建的 release APK 会集中复制到工程根目录的 [`outputs/`](outputs/)。
+本工程包含三个可独立安装的应用：PENG 桌面、PENG TV 与 PENG影视。已构建的 release APK 会集中复制到工程根目录的 [`outputs/`](outputs/)。
 
 ## 已构建 APK
 
@@ -8,10 +8,6 @@
 |---|---|---|---|---|
 | PENG 桌面 | `outputs/PENG-Launcher-v0.1.0-release.apk` | Android 4.0 / API 14 及以上；不含 native 库，支持设备自身 ABI | 已使用本地 release 签名 | `6a7f45576b2e8f6123879f9b2ec29750f1c4ac9a3d956f6f59a46a660d644d0f` |
 | PENG TV | `outputs/PENG-TV-v0.1.0-release.apk` | Android 4.4 / API 19 及以上；不含 native 库，支持设备自身 ABI | 已使用本地 release 签名 | `f4fd2b8881020852621d1f55e395fe406738b7593a3f81181955d9a5114b070a` |
-| PENG影视（电视/API19） | `outputs/PENG-Movie-API19-armeabi-v7a-release.apk` | Android 4.4 / API 19 及以上；仅 `armeabi-v7a`；适用于康佳 32 位电视进程 | Android 默认 debug 签名，仅供自用安装 | `e532f4e717d2ee3429e10bb8e502cf0ce8641972e1a071f5317665a869e66d98` |
-| PENG影视（64 位） | `outputs/PENG-Movie-arm64-release.apk` | 仅 `arm64-v8a`；适用于 64 位电视和触控手机 | Android 默认 debug 签名，仅供自用安装 | `b65f5c26dbc444e17d5ed03cd21a5b1c6bc1a6ffb2e60e2bc4faef23edd6f347` |
-
-> 康佳 `konka_6a648` 的应用进程使用 32 位 ABI，应安装 `armeabi-v7a` 包。公开发布前应将默认 debug 签名替换为专用发布证书。
 
 ## 应用概览
 
@@ -19,7 +15,7 @@
 |---|---|---|---|
 | `launcher/` | `com.peng.launcher` | 默认桌面与应用管理 | 不提供视频播放或视频源 |
 | `live-show/` | `com.peng.live.show` | 轻量 IPTV 直播播放器 | 本地默认公开频道；用户可添加拥有使用权的 M3U 与 XMLTV 地址 |
-| `movie/` | `com.peng.movie` | 多站点影视与直播客户端 | 内置影视配置和直播源清单，可在配置地址页选择，也支持手动输入与历史记录 |
+| `movie/` | `com.peng.movie` | 基于 TVBox 的影视与直播客户端 | 影视与直播源由用户配置 |
 
 ## PENG 桌面
 
@@ -112,29 +108,20 @@ live-show/build/outputs/apk/release/PENG-TV-v<version>-release.apk
 
 ## PENG影视
 
-`movie/` 是为 Android 4.4.4 / API 19 回移兼容的影视客户端，包名为
-`com.peng.movie`。它不声明 HOME，不会改变默认桌面；当前发行包仅支持
-`arm64-v8a`。
+`movie/` 是收编到 PengTV 根工程的 TVBox 影视客户端，包名为
+`com.peng.movie`。它依赖 `movie/quickjs/`，Python 风味额外依赖
+`movie/pyramid/`；默认的 Java 风味兼容 Android 4.4 / API 19。
 
-PENG影视会根据设备形态自动适配：电视保持横屏、沉浸式与遥控器焦点操作；触控手机的浏览页支持竖屏和横屏、显示系统栏，并将海报网格调整为竖屏两列或横屏四列。播放页仍默认横屏。
-
-- API 19 产品路径使用 IJK 与系统播放器；Media3、阿里播放器和新版 Exo 实现不进入 API 19 构建。
-- 首页默认使用多行海报网格，并支持遥控器焦点导航、搜索、收藏、历史、直播和本地文件入口。
-- `movie/src/main/assets/default-configs.json` 内置 31 个影视配置地址（25 个单仓、6 个多仓）；首次默认项为饭太硬。
-- `movie/src/main/assets/default-live-sources.json` 内置 33 个直播源，涵盖推荐、IPv4、IPv6、混合网络、海外与其他分类；首次默认项为游魂。
-- 在“配置地址”弹窗中，影视地址和直播地址右侧的“内置”按钮会打开只读列表；选中条目会立即保存并加入历史，也可继续手动输入地址。
-- 内置地址仅作为可编辑源码资产中的预置入口。第三方内容的可用性、合法性和授权状态由使用者自行确认。
-
-单独构建 PENG影视：
+构建 64 位通用 Debug APK：
 
 ```bash
-./gradlew :movie:assembleRelease
+./gradlew :movie:assembleArm64GenericNormalDebug
 ```
 
-输出路径：
+APK 位于：
 
 ```text
-movie/build/outputs/apk/release/PENG-VOD-v<version>-release.apk
+movie/build/outputs/apk/arm64GenericNormal/debug/PENG-Movie_debug-arm64-generic-java.apk
 ```
 
 ## 遥控器操作
@@ -209,13 +196,12 @@ live-show/
     java/com/peng/video/       # IPTV 播放、源配置和手机导入服务
     res/                       # PENG TV 主题和 TV Banner
 movie/
-  src/main/
-    assets/                    # 内置影视配置与直播源清单
-    java/                      # API 19 兼容影视客户端
+  src/main/                    # PENG影视应用源码与资源
+  quickjs/                     # JavaScript 引擎库
+  pyramid/                     # Python 风味库
 outputs/                       # 已签名 APK 集中输出目录
 config.gradle                  # 所有子应用的包名、版本和 SDK 配置
-RECOVERY.md                    # 原 APK 结构和恢复记录
-TV_UI_SPEC.md                  # TV 焦点与设置页面 UI 强制规范
+docs/                          # 项目设计、兼容性与恢复文档
 ```
 
 ## 定制
@@ -227,14 +213,12 @@ TV_UI_SPEC.md                  # TV 焦点与设置页面 UI 强制规范
 | 默认首页背景 | `launcher/src/main/res/drawable-nodpi/bg_launcher_default_new.webp` |
 | 关于页文案 | `FeatureActivity.java` 的 `about()` |
 | 首页卡片数量 | `MainActivity.java` 的 `DESKTOP_CARD_COUNT` |
-| PENG影视内置配置 | `movie/src/main/assets/default-configs.json` |
-| PENG影视内置直播源 | `movie/src/main/assets/default-live-sources.json` |
 
-如果修改 TV 交互控件，请严格遵循 [`TV_UI_SPEC.md`](TV_UI_SPEC.md)：所有可交互元素必须提供清晰可辨的默认态、焦点态和按压态。
+如果修改 TV 交互控件，请严格遵循 [`docs/TV_UI_SPEC.md`](docs/TV_UI_SPEC.md)：所有可交互元素必须提供清晰可辨的默认态、焦点态和按压态。
 
 ## 原 APK 还原材料
 
-仓库保留了 [`RECOVERY.md`](RECOVERY.md) 和 `recovered/README.md`，说明原当贝桌面 APK 的反编译材料、页面关系和还原过程。
+仓库保留了 [`docs/RECOVERY.md`](docs/RECOVERY.md) 和 `recovered/README.md`，说明原当贝桌面 APK 的反编译材料、页面关系和还原过程。
 
 完整反编译归档不纳入版本控制：其中包含原 APK 的签名、服务配置及第三方材料，不属于本项目的可维护运行源码。
 
@@ -243,7 +227,7 @@ TV_UI_SPEC.md                  # TV 焦点与设置页面 UI 强制规范
 欢迎提交 Issue 和 Pull Request。提交前请确保：
 
 1. 使用 `./gradlew assembleDebug` 构建通过。
-2. 新增遥控器交互满足 [`TV_UI_SPEC.md`](TV_UI_SPEC.md)。
+2. 新增遥控器交互满足 [`docs/TV_UI_SPEC.md`](docs/TV_UI_SPEC.md)。
 3. 不提交构建目录、`local.properties`、密钥、原 APK 或其他敏感材料。
 
 ## 许可证
