@@ -70,6 +70,7 @@ public final class MainActivity extends FeatureActivity {
     private ImageView homeBackground;
     private int currentPage;
     private boolean featurePageShown;
+    private boolean returnToSettings;
     private List<AppChoice> availableApps;
     private final LruCache<String, Bitmap> normalizedIconCache =
             new LruCache<String, Bitmap>(1536 * 1024) {
@@ -202,6 +203,9 @@ public final class MainActivity extends FeatureActivity {
         stopUploadServer();
         featurePageShown = true;
         currentPage = -1;
+        if (SETTINGS.equals(page)) {
+            returnToSettings = false;
+        }
         if (ABOUT.equals(page)) {
             about();
         } else if (WALLPAPER_UPLOAD.equals(page)) {
@@ -215,6 +219,7 @@ public final class MainActivity extends FeatureActivity {
 
     @Override
     protected void openFeaturePage(String page) {
+        returnToSettings = featurePageShown;
         showFeaturePage(page);
     }
 
@@ -224,6 +229,11 @@ public final class MainActivity extends FeatureActivity {
             return;
         }
         stopUploadServer();
+        if (returnToSettings) {
+            returnToSettings = false;
+            settings();
+            return;
+        }
         featurePageShown = false;
         currentPage = 0;
         buildHome();
@@ -268,7 +278,8 @@ public final class MainActivity extends FeatureActivity {
                 return;
             }
         }
-        homeBackground.setImageResource(R.drawable.bg_launcher_default_new);
+        homeBackground.setImageDrawable(null);
+        homeBackground.setBackgroundColor(Color.rgb(15, 29, 49));
     }
 
     private Bitmap decodeWallpaper(File wallpaperFile) {

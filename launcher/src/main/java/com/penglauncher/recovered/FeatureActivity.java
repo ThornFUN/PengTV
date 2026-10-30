@@ -297,7 +297,7 @@ abstract class FeatureActivity extends Activity {
         addAction("Wi-Fi", "打开系统 Wi-Fi 设置", new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));
+                openWifiSettings();
             }
         });
         addAction("手机传输", "通过局域网传递壁纸或文件", new View.OnClickListener() {
@@ -332,6 +332,18 @@ abstract class FeatureActivity extends Activity {
         addInfo("应用目的\n提供简洁、可自定义且适合遥控器操作的应用入口。");
         addInfo("Android 兼容性\n支持 Android 4.0（API 14）及以上；当前目标版本为 Android 15（API 35）。");
         addInfo("作者\nPENG");
+    }
+
+    private void openWifiSettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));
+        } catch (android.content.ActivityNotFoundException exception) {
+            try {
+                startActivity(new Intent(Settings.ACTION_SETTINGS));
+            } catch (android.content.ActivityNotFoundException fallbackException) {
+                Toast.makeText(this, "此设备未提供系统设置页面", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     protected void showFileManager() {
@@ -725,10 +737,10 @@ abstract class FeatureActivity extends Activity {
             closeFeaturePage();
             return;
         }
-        showPage("手机传输", "离开此页面后，传输服务将自动关闭。");
+        showPage("手机传输", "返回设置页面后，传输服务将自动关闭。");
         addHighlightInfo("请在手机浏览器中打开以下局域网地址", uploadAddresses());
         addInfo("可上传裁剪后的首页壁纸，或传输普通文件到电视。此服务不设密码，请仅在可信局域网内短暂使用。");
-        addAction("关闭传输服务", "停止服务并返回桌面", new View.OnClickListener() {
+        addAction("关闭传输服务", "停止服务并返回设置", new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 closeFeaturePage();
