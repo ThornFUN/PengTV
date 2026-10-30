@@ -2,6 +2,8 @@ plugins {
     id "com.android.application"
 }
 
+def appConfig = rootProject.ext.pengTv.apps.movie
+
 def signingProperties = new Properties()
 def signingPropertiesFile = rootProject.file("keystore.properties")
 if (signingPropertiesFile.isFile()) {
@@ -12,14 +14,14 @@ def hasReleaseSigning = ["storeFile", "storePassword", "keyAlias", "keyPassword"
 
 android {
     namespace "com.github.tvbox.osc"
-    compileSdk 35
+    compileSdk rootProject.ext.pengTv.compileSdk
 
     defaultConfig {
-        applicationId "com.peng.vod"
-        minSdk 19
-        targetSdk 28
-        versionCode 1
-        versionName "0.2.0-tvbox"
+        applicationId appConfig.applicationId
+        minSdk appConfig.minSdk
+        targetSdk appConfig.targetSdk
+        versionCode appConfig.versionCode
+        versionName appConfig.versionName
         multiDexEnabled true
         javaCompileOptions {
             annotationProcessorOptions {
@@ -84,7 +86,7 @@ dependencies {
     }
     implementation "org.greenrobot:eventbus:3.2.0"
     implementation "com.orhanobut:hawk:2.0.1"
-    implementation project(":vodplayer")
+    implementation project(":movie-player")
     implementation "com.lzy.net:okgo:3.0.4"
     implementation "com.owen:tv-recyclerview:3.0.0"
     implementation "com.github.getActivity:XXPermissions:13.6"

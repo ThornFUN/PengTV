@@ -20,8 +20,8 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "PengLauncher"
-include(":app")
-include(":video")
-include(":vod")
-include(":vodplayer")
+rootProject.name = "PengTV"
+include(":launcher")
+include(":live-show")
+include(":movie")
+include(":movie-player")

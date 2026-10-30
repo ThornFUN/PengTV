@@ -25,7 +25,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Build;
 import android.os.Handler;
-import android.provider.Settings;
 import android.util.LruCache;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -51,7 +50,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-public final class MainActivity extends BasePageActivity {
+public final class MainActivity extends FeatureActivity {
     private static final int COLUMN_COUNT = 5;
     private static final int INITIAL_CARD_COUNT = 5;
     private static final int DESKTOP_CARD_COUNT = 5;
@@ -70,8 +69,10 @@ public final class MainActivity extends BasePageActivity {
     private View firstAllAppsCard;
     private TextView settingsButton;
     private int lastHomeFocusIndex;
+    private ComponentName lastHomeFocusComponent;
     private ImageView homeBackground;
     private int currentPage;
+    private boolean featurePageShown;
     private List<AppChoice> availableApps;
     private final LruCache<String, Bitmap> normalizedIconCache =
             new LruCache<String, Bitmap>(1536 * 1024) {
@@ -140,7 +141,7 @@ public final class MainActivity extends BasePageActivity {
         registerPackageChangeReceiver();
         clockHandler.removeCallbacks(updateClock);
         clockHandler.post(updateClock);
-        if (homeBackground != null) {
+        if (!featurePageShown && homeBackground != null) {
             refreshAvailableApps(true);
             applyHomeWallpaper();
         }
@@ -181,7 +182,7 @@ public final class MainActivity extends BasePageActivity {
                 @Override
                 public void run() {
                     if (currentPage == 0) {
-                        focusHomeCard(lastHomeFocusIndex);
+                        restoreHomeFocus();
                     } else if (currentPage == 1) {
                         focusFirstAllAppsCard();
                     }
@@ -199,7 +200,7 @@ public final class MainActivity extends BasePageActivity {
                 && settingsButton.hasFocus()) {
             if (event.getAction() == KeyEvent.ACTION_UP) {
                 hideSettingsButton();
-                focusHomeCard(lastHomeFocusIndex);
+                restoreHomeFocus();
             }
             return true;
         }
@@ -210,6 +211,45 @@ public final class MainActivity extends BasePageActivity {
             return true;
         }
         return super.dispatchKeyEvent(event);
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (featurePageShown) {
+            closeFeaturePage();
+        } else if (currentPage == 1) {
+            showHomePage();
+        }
+        // The home page is the root of PENG 桌面. Back must never close the launcher.
+    }
+
+    private void showFeaturePage(String page) {
+        stopUploadServer();
+        featurePageShown = true;
+        currentPage = -1;
+        if (ABOUT.equals(page)) {
+            about();
+        } else if (WALLPAPER_UPLOAD.equals(page)) {
+            showWallpaperUpload();
+        } else {
+            settings();
+        }
+    }
+
+    @Override
+    protected void openFeaturePage(String page) {
+        showFeaturePage(page);
+    }
+
+    @Override
+    protected void closeFeaturePage() {
+        if (!featurePageShown) {
+            return;
+        }
+        stopUploadServer();
+        featurePageShown = false;
+        currentPage = 0;
+        buildHome();
     }
 
     private void buildHome() {
@@ -236,15 +276,14 @@ public final class MainActivity extends BasePageActivity {
         pageSwitcher.post(new Runnable() {
             @Override
             public void run() {
-                focusHomeCard(0);
+                restoreHomeFocus();
             }
         });
     }
 
     private void applyHomeWallpaper() {
         String wallpaperPath = getSharedPreferences(
-                FeatureActivity.WALLPAPER_PREFERENCES, MODE_PRIVATE)
-                .getString(FeatureActivity.WALLPAPER_PATH_KEY, null);
+                WALLPAPER_PREFERENCES, MODE_PRIVATE).getString(WALLPAPER_PATH_KEY, null);
         if (wallpaperPath != null && new File(wallpaperPath).isFile()) {
             Bitmap wallpaper = decodeWallpaper(new File(wallpaperPath));
             if (wallpaper != null) {
@@ -377,7 +416,7 @@ public final class MainActivity extends BasePageActivity {
         settingsButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                FeatureActivity.open(MainActivity.this, FeatureActivity.SETTINGS);
+                showFeaturePage(SETTINGS);
             }
         });
         settingsButton.setOnKeyListener(new View.OnKeyListener() {
@@ -398,6 +437,8 @@ public final class MainActivity extends BasePageActivity {
     }
 
     private void refreshCards() {
+        final ComponentName returnComponent = lastHomeFocusComponent;
+        final int returnIndex = lastHomeFocusIndex;
         cardGrid.removeAllViews();
         LinearLayout row = null;
         for (int index = 0; index < DESKTOP_CARD_COUNT; index++) {
@@ -419,10 +460,20 @@ public final class MainActivity extends BasePageActivity {
             if (index == 0) {
                 firstHomeCard = card;
             }
-            card.setTag(index);
+            card.setTag(new HomeCardFocus(index, app == null ? null
+                    : new ComponentName(app.resolveInfo.activityInfo.packageName,
+                    app.resolveInfo.activityInfo.name)));
             row.addView(card, gridParams());
         }
         refreshAllApps();
+        if (currentPage == 0) {
+            cardGrid.post(new Runnable() {
+                @Override
+                public void run() {
+                    focusHomeCard(returnComponent, returnIndex);
+                }
+            });
+        }
     }
 
     private void refreshAllApps() {
@@ -705,7 +756,29 @@ public final class MainActivity extends BasePageActivity {
     }
 
     private void focusHomeCard(int index) {
-        View card = getHomeCard(index);
+        focusHomeCard(null, index);
+    }
+
+    private void restoreHomeFocus() {
+        focusHomeCard(lastHomeFocusComponent, lastHomeFocusIndex);
+    }
+
+    private void focusHomeCard(ComponentName component, int fallbackIndex) {
+        if (component != null) {
+            for (int index = 0; index < DESKTOP_CARD_COUNT; index++) {
+                AppChoice choice = choiceAt(index);
+                if (choice != null && component.getPackageName().equals(
+                        choice.resolveInfo.activityInfo.packageName)
+                        && component.getClassName().equals(choice.resolveInfo.activityInfo.name)) {
+                    View matchingCard = getHomeCard(index);
+                    if (matchingCard != null) {
+                        matchingCard.requestFocus();
+                        return;
+                    }
+                }
+            }
+        }
+        View card = getHomeCard(Math.max(0, Math.min(fallbackIndex, DESKTOP_CARD_COUNT - 1)));
         if (card != null) {
             card.requestFocus();
         } else if (firstHomeCard != null) {
@@ -726,7 +799,7 @@ public final class MainActivity extends BasePageActivity {
             @Override
             public void run() {
                 hideSettingsButton();
-                focusHomeCard(0);
+                restoreHomeFocus();
             }
         });
     }
@@ -757,8 +830,10 @@ public final class MainActivity extends BasePageActivity {
                         .scaleY(focused ? 1.10f : 1.0f).setDuration(160).start();
                 if (focused) {
                     Object tag = view.getTag();
-                    if (tag instanceof Integer) {
-                        lastHomeFocusIndex = (Integer) tag;
+                    if (tag instanceof HomeCardFocus) {
+                        HomeCardFocus cardFocus = (HomeCardFocus) tag;
+                        lastHomeFocusIndex = cardFocus.index;
+                        lastHomeFocusComponent = cardFocus.component;
                     }
                 }
             }
@@ -802,16 +877,10 @@ public final class MainActivity extends BasePageActivity {
     private void showAllAppsMenu(final AppChoice app) {
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle(app.label)
-                .setItems(new String[]{"应用详情", "卸载"}, (ignoredDialog, which) -> {
-                    if (which == 0) {
-                        Intent details = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                        details.setData(Uri.parse("package:" + app.resolveInfo.activityInfo.packageName));
-                        startAfterDialogDismiss((AlertDialog) ignoredDialog, details);
-                    } else {
-                        Intent uninstall = new Intent(Intent.ACTION_UNINSTALL_PACKAGE);
-                        uninstall.setData(Uri.parse("package:" + app.resolveInfo.activityInfo.packageName));
-                        startAfterDialogDismiss((AlertDialog) ignoredDialog, uninstall);
-                    }
+                .setItems(new String[]{"卸载"}, (ignoredDialog, which) -> {
+                    Intent uninstall = new Intent(Intent.ACTION_UNINSTALL_PACKAGE);
+                    uninstall.setData(Uri.parse("package:" + app.resolveInfo.activityInfo.packageName));
+                    startAfterDialogDismiss((AlertDialog) ignoredDialog, uninstall);
                 })
                 .create();
         applyDialogFocusStyle(dialog);
@@ -1084,6 +1153,16 @@ public final class MainActivity extends BasePageActivity {
         private AppChoice(ResolveInfo resolveInfo, String label) {
             this.resolveInfo = resolveInfo;
             this.label = label;
+        }
+    }
+
+    private static final class HomeCardFocus {
+        private final int index;
+        private final ComponentName component;
+
+        private HomeCardFocus(int index, ComponentName component) {
+            this.index = index;
+            this.component = component;
         }
     }
 }

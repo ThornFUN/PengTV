@@ -4,11 +4,11 @@ plugins {
 
 android {
     namespace "com.github.tvbox.osc.player"
-    compileSdk 35
+    compileSdk rootProject.ext.pengTv.compileSdk
 
     defaultConfig {
-        minSdk 19
-        targetSdk 28
+        minSdk rootProject.ext.pengTv.apps.movie.minSdk
+        targetSdk rootProject.ext.pengTv.apps.movie.targetSdk
         versionCode 1
         versionName "1.0"
     }

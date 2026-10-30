@@ -1,4 +1,27 @@
-# PENG 桌面
+# PENG Android TV 套件
+
+本工程包含三个可独立安装的应用：PENG 桌面、PENG TV 与 PENG影视。前两者面向电视遥控器操作；PENG影视同时支持电视遥控器与手机触控。已构建的 release APK 会集中复制到工程根目录的 [`outputs/`](outputs/)。
+
+## 已构建 APK
+
+| 应用 | APK | 兼容范围 | 签名 | SHA-256 |
+|---|---|---|---|---|
+| PENG 桌面 | `outputs/PENG-Launcher-v0.1.0-release.apk` | Android 4.0 / API 14 及以上；不含 native 库，支持设备自身 ABI | 已使用本地 release 签名 | `6a7f45576b2e8f6123879f9b2ec29750f1c4ac9a3d956f6f59a46a660d644d0f` |
+| PENG TV | `outputs/PENG-TV-v0.1.0-release.apk` | Android 4.4 / API 19 及以上；不含 native 库，支持设备自身 ABI | 已使用本地 release 签名 | `f4fd2b8881020852621d1f55e395fe406738b7593a3f81181955d9a5114b070a` |
+| PENG影视（电视/API19） | `outputs/PENG-Movie-API19-armeabi-v7a-release.apk` | Android 4.4 / API 19 及以上；仅 `armeabi-v7a`；适用于康佳 32 位电视进程 | Android 默认 debug 签名，仅供自用安装 | `e532f4e717d2ee3429e10bb8e502cf0ce8641972e1a071f5317665a869e66d98` |
+| PENG影视（64 位） | `outputs/PENG-Movie-arm64-release.apk` | 仅 `arm64-v8a`；适用于 64 位电视和触控手机 | Android 默认 debug 签名，仅供自用安装 | `b65f5c26dbc444e17d5ed03cd21a5b1c6bc1a6ffb2e60e2bc4faef23edd6f347` |
+
+> 康佳 `konka_6a648` 的应用进程使用 32 位 ABI，应安装 `armeabi-v7a` 包。公开发布前应将默认 debug 签名替换为专用发布证书。
+
+## 应用概览
+
+| 模块 | 包名 | 定位 | 视频源策略 |
+|---|---|---|---|
+| `launcher/` | `com.peng.launcher` | 默认桌面与应用管理 | 不提供视频播放或视频源 |
+| `live-show/` | `com.peng.live.show` | 轻量 IPTV 直播播放器 | 本地默认公开频道；用户可添加拥有使用权的 M3U 与 XMLTV 地址 |
+| `movie/` | `com.peng.movie` | 多站点影视与直播客户端 | 内置影视配置和直播源清单，可在配置地址页选择，也支持手动输入与历史记录 |
+
+## PENG 桌面
 
 PENG 桌面是一个面向 Android TV、电视盒子和大屏设备的轻量级开源启动器。它以遥控器方向键为核心交互方式，提供可自定义的首页应用卡片、独立的全部应用页、系统 Wi-Fi 入口、本地壁纸和应用管理功能。
 
@@ -35,7 +58,7 @@ cd peng-launcher
 生成的调试 APK 位于：
 
 ```text
-app/build/outputs/apk/debug/app-debug.apk
+launcher/build/outputs/apk/debug/launcher-debug.apk
 ```
 
 ### 构建签名 Release APK
@@ -51,21 +74,21 @@ cp keystore.properties.example keystore.properties
 签名后的 Release APK 输出到：
 
 ```text
-app/build/outputs/apk/release/PENG-Launcher-v<version>-release.apk
+launcher/build/outputs/apk/release/PENG-Launcher-v<version>-release.apk
 ```
 
 如已连接设备或模拟器，可直接安装：
 
 ```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r launcher/build/outputs/apk/debug/launcher-debug.apk
 ```
 
 首次使用时，在系统设置中将 **PENG 桌面** 设为默认桌面应用，或从应用列表直接启动。
 
-## PENG影视
+## PENG TV
 
-`video/` 是与 PENG 桌面同仓库、但可独立安装的 IPTV 应用，包名为
-`com.peng.video`。它不声明 HOME，不会改变默认桌面。
+`live-show/` 是与 PENG 桌面同仓库、但可独立安装的 IPTV 应用，包名为
+`com.peng.live.show`。它不声明 HOME，不会改变默认桌面。
 
 - 内置 `assets/default_channels.tsv` 中的默认频道；可追加用户有权使用的 M3U 频道源。
 - 可选导入 XMLTV 地址，在频道列表中显示节目单预览。
@@ -73,18 +96,45 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
   `8081` 端口填写地址；该服务只在导入页面可见时运行。
 - 采用兼容 Android 4.4 的 ExoPlayer HLS 播放器，适合设备自身支持的 HTTP/HLS 流。
 - 频道按三位编号显示；应用启动时自动恢复上次选择的频道，播放页可按上、下键切换上一或下一频道，也可用数字键输入编号后按确认跳转。
-- 播放页按菜单键打开频道列表，频道列表按返回键回到播放页；播放页连续按两次返回键退出 PENG影视。
+- 播放页按菜单键打开频道列表，频道列表按返回键回到播放页；播放页连续按两次返回键退出 PENG TV。
 
-单独构建 PENG影视：
+单独构建 PENG TV：
 
 ```bash
-./gradlew :video:assembleRelease
+./gradlew :live-show:assembleRelease
 ```
 
 签名后的 APK 输出到：
 
 ```text
-video/build/outputs/apk/release/PENG-Video-v<version>-release.apk
+live-show/build/outputs/apk/release/PENG-TV-v<version>-release.apk
+```
+
+## PENG影视
+
+`movie/` 是为 Android 4.4.4 / API 19 回移兼容的影视客户端，包名为
+`com.peng.movie`。它不声明 HOME，不会改变默认桌面；当前发行包仅支持
+`arm64-v8a`。
+
+PENG影视会根据设备形态自动适配：电视保持横屏、沉浸式与遥控器焦点操作；触控手机的浏览页支持竖屏和横屏、显示系统栏，并将海报网格调整为竖屏两列或横屏四列。播放页仍默认横屏。
+
+- API 19 产品路径使用 IJK 与系统播放器；Media3、阿里播放器和新版 Exo 实现不进入 API 19 构建。
+- 首页默认使用多行海报网格，并支持遥控器焦点导航、搜索、收藏、历史、直播和本地文件入口。
+- `movie/src/main/assets/default-configs.json` 内置 31 个影视配置地址（25 个单仓、6 个多仓）；首次默认项为饭太硬。
+- `movie/src/main/assets/default-live-sources.json` 内置 33 个直播源，涵盖推荐、IPv4、IPv6、混合网络、海外与其他分类；首次默认项为游魂。
+- 在“配置地址”弹窗中，影视地址和直播地址右侧的“内置”按钮会打开只读列表；选中条目会立即保存并加入历史，也可继续手动输入地址。
+- 内置地址仅作为可编辑源码资产中的预置入口。第三方内容的可用性、合法性和授权状态由使用者自行确认。
+
+单独构建 PENG影视：
+
+```bash
+./gradlew :movie:assembleRelease
+```
+
+输出路径：
+
+```text
+movie/build/outputs/apk/release/PENG-VOD-v<version>-release.apk
 ```
 
 ## 遥控器操作
@@ -145,7 +195,7 @@ adb shell input keyevent 4   # 返回
 ## 项目结构
 
 ```text
-app/
+launcher/
   src/main/
     java/com/penglauncher/recovered/
       MainActivity.java        # 首页、全部应用页、卡片管理和遥控器导航
@@ -154,10 +204,16 @@ app/
     res/
       drawable-nodpi/          # 首页背景和 PENG Logo
       values/                  # 应用名称与主题
-video/
+live-show/
   src/main/
     java/com/peng/video/       # IPTV 播放、源配置和手机导入服务
-    res/                       # PENG影视主题和 TV Banner
+    res/                       # PENG TV 主题和 TV Banner
+movie/
+  src/main/
+    assets/                    # 内置影视配置与直播源清单
+    java/                      # API 19 兼容影视客户端
+outputs/                       # 已签名 APK 集中输出目录
+config.gradle                  # 所有子应用的包名、版本和 SDK 配置
 RECOVERY.md                    # 原 APK 结构和恢复记录
 TV_UI_SPEC.md                  # TV 焦点与设置页面 UI 强制规范
 ```
@@ -166,11 +222,13 @@ TV_UI_SPEC.md                  # TV 焦点与设置页面 UI 强制规范
 
 | 内容 | 位置 |
 |---|---|
-| 应用名称 | `app/src/main/res/values/strings.xml` |
-| 应用 Logo | `app/src/main/res/drawable-nodpi/ic_peng_logo.png` |
-| 默认首页背景 | `app/src/main/res/drawable-nodpi/bg_launcher_default_new.webp` |
+| 应用名称 | `launcher/src/main/res/values/strings.xml` |
+| 应用 Logo | `launcher/src/main/res/drawable-nodpi/ic_peng_logo.png` |
+| 默认首页背景 | `launcher/src/main/res/drawable-nodpi/bg_launcher_default_new.webp` |
 | 关于页文案 | `FeatureActivity.java` 的 `about()` |
 | 首页卡片数量 | `MainActivity.java` 的 `DESKTOP_CARD_COUNT` |
+| PENG影视内置配置 | `movie/src/main/assets/default-configs.json` |
+| PENG影视内置直播源 | `movie/src/main/assets/default-live-sources.json` |
 
 如果修改 TV 交互控件，请严格遵循 [`TV_UI_SPEC.md`](TV_UI_SPEC.md)：所有可交互元素必须提供清晰可辨的默认态、焦点态和按压态。
 

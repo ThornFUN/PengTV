@@ -3,9 +3,8 @@ package com.penglauncher.recovered;
 import android.content.Context;
 import android.content.Intent;
 import android.app.AlertDialog;
-import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.Settings;
 import android.view.View;
 import android.widget.Toast;
@@ -23,19 +22,20 @@ import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.URLDecoder;
 import java.nio.charset.Charset;
 import java.util.Enumeration;
 
-public final class FeatureActivity extends BasePageActivity {
+public class FeatureActivity extends BasePageActivity {
     public static final String SETTINGS = "settings";
     public static final String ABOUT = "about";
     public static final String WALLPAPER_UPLOAD = "wallpaper_upload";
     public static final String EXTRA_PAGE = "page";
     public static final String WALLPAPER_PREFERENCES = "home_wallpaper";
     public static final String WALLPAPER_PATH_KEY = "path";
-    private static final int SELECT_WALLPAPER_REQUEST = 100;
     private static final int WALLPAPER_UPLOAD_PORT = 8080;
     private static final long MAX_WALLPAPER_BYTES = 8L * 1024L * 1024L;
+    private static final long MAX_FILE_BYTES = 1024L * 1024L * 1024L;
     private static final int MAX_REQUEST_HEADER_BYTES = 8192;
     private WallpaperUploadServer uploadServer;
 
@@ -48,6 +48,9 @@ public final class FeatureActivity extends BasePageActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (getClass() != FeatureActivity.class) {
+            return;
+        }
         if (ABOUT.equals(getIntent().getStringExtra(EXTRA_PAGE))) {
             about();
         } else if (WALLPAPER_UPLOAD.equals(getIntent().getStringExtra(EXTRA_PAGE))) {
@@ -57,7 +60,7 @@ public final class FeatureActivity extends BasePageActivity {
         }
     }
 
-    private void settings() {
+    protected void settings() {
         showPage("设置", null);
         addAction("Wi-Fi", "打开系统 Wi-Fi 设置", new View.OnClickListener() {
             @Override
@@ -65,16 +68,10 @@ public final class FeatureActivity extends BasePageActivity {
                 startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));
             }
         });
-        addAction("首页壁纸", "选择本地图片作为首页背景", new View.OnClickListener() {
+        addAction("手机传输", "通过局域网传递壁纸或文件", new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                selectWallpaper();
-            }
-        });
-        addAction("手机上传壁纸", "临时开放局域网上传页面", new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                FeatureActivity.open(FeatureActivity.this, WALLPAPER_UPLOAD);
+                openFeaturePage(WALLPAPER_UPLOAD);
             }
         });
         addAction("重置首页壁纸", "恢复内置默认背景图", new View.OnClickListener() {
@@ -86,12 +83,12 @@ public final class FeatureActivity extends BasePageActivity {
         addAction("关于 PENG 桌面", "应用背景、目的与作者", new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                FeatureActivity.open(FeatureActivity.this, ABOUT);
+                openFeaturePage(ABOUT);
             }
         });
     }
 
-    private void about() {
+    protected void about() {
         showPage("关于 PENG 桌面", null);
         addInfo("应用背景\nPENG 桌面是一款为 Android TV 设备打造的轻量级自定义桌面。");
         addInfo("应用目的\n提供简洁、可自定义且适合遥控器操作的应用入口。");
@@ -99,59 +96,28 @@ public final class FeatureActivity extends BasePageActivity {
         addInfo("作者\nPENG");
     }
 
-    private void showWallpaperUpload() {
+    protected void showWallpaperUpload() {
         try {
             uploadServer = new WallpaperUploadServer();
             uploadServer.start();
         } catch (BindException exception) {
             Toast.makeText(this, "端口 8080 已被占用，无法启动上传服务", Toast.LENGTH_SHORT).show();
-            finish();
+            closeFeaturePage();
             return;
         } catch (IOException exception) {
             Toast.makeText(this, "无法启动上传服务", Toast.LENGTH_SHORT).show();
-            finish();
+            closeFeaturePage();
             return;
         }
-        showPage("手机上传壁纸", "离开此页面后，上传服务将自动关闭。");
+        showPage("手机传输", "离开此页面后，传输服务将自动关闭。");
         addHighlightInfo("请在手机浏览器中打开以下局域网地址", uploadAddresses());
-        addInfo("此服务不设密码，请仅在可信局域网内短暂使用。图片最大 8MB。");
-        addAction("关闭上传服务", "停止服务并返回桌面", new View.OnClickListener() {
+        addInfo("可上传裁剪后的首页壁纸，或传输普通文件到电视。此服务不设密码，请仅在可信局域网内短暂使用。");
+        addAction("关闭传输服务", "停止服务并返回桌面", new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                finish();
+                closeFeaturePage();
             }
         });
-    }
-
-    private void selectWallpaper() {
-        Intent intent = new Intent(Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT
-                ? Intent.ACTION_OPEN_DOCUMENT : Intent.ACTION_GET_CONTENT);
-        intent.setType("image/*");
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-        startActivityForResult(intent, SELECT_WALLPAPER_REQUEST);
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != SELECT_WALLPAPER_REQUEST || resultCode != RESULT_OK
-                || data == null || data.getData() == null) {
-            return;
-        }
-        copyWallpaper(data.getData());
-    }
-
-    private void copyWallpaper(Uri sourceUri) {
-        try (InputStream source = getContentResolver().openInputStream(sourceUri)) {
-            if (source == null) {
-                Toast.makeText(this, "无法读取所选图片", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            saveWallpaper(source);
-            Toast.makeText(this, "首页壁纸已更新", Toast.LENGTH_SHORT).show();
-        } catch (IOException | SecurityException exception) {
-            Toast.makeText(this, "保存壁纸失败", Toast.LENGTH_SHORT).show();
-        }
     }
 
     private void confirmWallpaperReset() {
@@ -228,11 +194,19 @@ public final class FeatureActivity extends BasePageActivity {
         super.onStop();
     }
 
-    private void stopUploadServer() {
+    protected void stopUploadServer() {
         if (uploadServer != null) {
             uploadServer.stop();
             uploadServer = null;
         }
+    }
+
+    protected void openFeaturePage(String page) {
+        FeatureActivity.open(this, page);
+    }
+
+    protected void closeFeaturePage() {
+        finish();
     }
 
     private String uploadAddresses() {
@@ -322,18 +296,26 @@ public final class FeatureActivity extends BasePageActivity {
                     return;
                 }
                 long contentLength = -1L;
+                String encodedFileName = null;
                 String line;
                 while ((line = readLine(input)) != null && line.length() > 0) {
                     int separator = line.indexOf(':');
-                    if (separator > 0 && "content-length".equalsIgnoreCase(
-                            line.substring(0, separator).trim())) {
-                        contentLength = Long.parseLong(line.substring(separator + 1).trim());
+                    if (separator > 0) {
+                        String headerName = line.substring(0, separator).trim();
+                        String headerValue = line.substring(separator + 1).trim();
+                        if ("content-length".equalsIgnoreCase(headerName)) {
+                            contentLength = Long.parseLong(headerValue);
+                        } else if ("x-file-name".equalsIgnoreCase(headerName)) {
+                            encodedFileName = headerValue;
+                        }
                     }
                 }
                 if (requestLine.startsWith("GET / ")) {
                     writeResponse(output, 200, "text/html; charset=utf-8", uploadPage());
-                } else if (requestLine.startsWith("POST /upload ")) {
-                    handleUpload(input, output, contentLength);
+                } else if (requestLine.startsWith("POST /wallpaper ")) {
+                    handleWallpaperUpload(input, output, contentLength);
+                } else if (requestLine.startsWith("POST /file ")) {
+                    handleFileUpload(input, output, contentLength, encodedFileName);
                 } else {
                     writeResponse(output, 404, "text/plain; charset=utf-8", "Not found");
                 }
@@ -347,7 +329,7 @@ public final class FeatureActivity extends BasePageActivity {
             }
         }
 
-        private void handleUpload(InputStream input, OutputStream output, long contentLength)
+        private void handleWallpaperUpload(InputStream input, OutputStream output, long contentLength)
                 throws IOException {
             if (contentLength <= 0 || contentLength > MAX_WALLPAPER_BYTES) {
                 writeResponse(output, 413, "text/plain; charset=utf-8", "Image must be below 8MB");
@@ -365,6 +347,81 @@ public final class FeatureActivity extends BasePageActivity {
                         "壁纸已更新，返回电视首页即可查看效果。");
             } catch (IOException exception) {
                 writeResponse(output, 400, "text/plain; charset=utf-8", "无法保存图片，请重试。");
+            }
+        }
+
+        private void handleFileUpload(InputStream input, OutputStream output, long contentLength,
+                String encodedFileName) throws IOException {
+            if (contentLength <= 0 || contentLength > MAX_FILE_BYTES) {
+                writeResponse(output, 413, "text/plain; charset=utf-8", "File must be below 1GB");
+                return;
+            }
+            try {
+                File savedFile = saveReceivedFile(
+                        new LimitedInputStream(input, contentLength), encodedFileName);
+                writeResponse(output, 200, "text/plain; charset=utf-8",
+                        "文件已保存到电视：" + savedFile.getAbsolutePath());
+            } catch (IOException | IllegalArgumentException exception) {
+                writeResponse(output, 400, "text/plain; charset=utf-8", "文件保存失败，请重试。");
+            }
+        }
+
+        private File saveReceivedFile(InputStream source, String encodedFileName) throws IOException {
+            String fileName = sanitizeFileName(encodedFileName);
+            File downloads = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+            File directory = new File(downloads == null ? getFilesDir() : downloads, "PENG");
+            if (!directory.exists() && !directory.mkdirs()) {
+                throw new IOException("cannot create transfer directory");
+            }
+            File target = uniqueFile(directory, fileName);
+            File temporary = new File(directory, "." + target.getName() + ".part");
+            boolean saved = false;
+            try (FileOutputStream destination = new FileOutputStream(temporary)) {
+                byte[] buffer = new byte[8192];
+                int bytesRead;
+                while ((bytesRead = source.read(buffer)) != -1) {
+                    destination.write(buffer, 0, bytesRead);
+                }
+                saved = true;
+            } finally {
+                if (!saved) {
+                    temporary.delete();
+                }
+            }
+            if (!temporary.renameTo(target)) {
+                temporary.delete();
+                throw new IOException("cannot save transfer");
+            }
+            return target;
+        }
+
+        private String sanitizeFileName(String encodedFileName) throws IOException {
+            if (encodedFileName == null) {
+                throw new IllegalArgumentException("missing file name");
+            }
+            String name = URLDecoder.decode(encodedFileName, "UTF-8")
+                    .replace('\\', '/');
+            name = new File(name).getName();
+            if (name.length() == 0 || name.length() > 128 || ".".equals(name)
+                    || "..".equals(name)) {
+                throw new IllegalArgumentException("invalid file name");
+            }
+            return name;
+        }
+
+        private File uniqueFile(File directory, String fileName) {
+            File candidate = new File(directory, fileName);
+            if (!candidate.exists()) {
+                return candidate;
+            }
+            int extension = fileName.lastIndexOf('.');
+            String base = extension > 0 ? fileName.substring(0, extension) : fileName;
+            String suffix = extension > 0 ? fileName.substring(extension) : "";
+            for (int index = 1; ; index++) {
+                candidate = new File(directory, base + " (" + index + ")" + suffix);
+                if (!candidate.exists()) {
+                    return candidate;
+                }
             }
         }
 
@@ -401,7 +458,7 @@ public final class FeatureActivity extends BasePageActivity {
         private String uploadPage() {
             return "<!doctype html><html lang=\"zh-CN\"><head><meta charset=\"utf-8\">"
                     + "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-                    + "<title>PENG 壁纸上传</title><style>"
+                    + "<title>PENG 手机传输</title><style>"
                     + "*{box-sizing:border-box}body{margin:0;min-height:100vh;display:flex;"
                     + "align-items:center;justify-content:center;padding:24px;font-family:-apple-system,"
                     + "BlinkMacSystemFont,'Segoe UI',sans-serif;color:#edf4ff;background:linear-gradient("
@@ -420,8 +477,11 @@ public final class FeatureActivity extends BasePageActivity {
                     + ".editor[hidden]{display:none}.crop{display:block;width:100%;aspect-ratio:16/9;border-radius:"
                     + "14px;background:#091522;touch-action:none}.controls{margin-top:14px}.controls label{display:block;"
                     + "margin-bottom:8px;color:#b8cbe3;font-size:14px}.controls input{display:block;width:100%;accent-color:"
-                    + "#5ba8ed}.tip{margin:10px 0 0;color:#9fc3e8;font-size:13px;line-height:1.5}</style></head><body>"
-                    + "<main class=\"card\"><span class=\"badge\">PENG 桌面</span><h1 class=\"title\">上传首页壁纸</h1>"
+                    + "#5ba8ed}.tip{margin:10px 0 0;color:#9fc3e8;font-size:13px;line-height:1.5}.transfer{margin-top:"
+                    + "28px;padding-top:22px;border-top:1px solid rgba(173,214,255,.28)}.transfer h2{margin:0 0 8px;"
+                    + "font-size:20px}.transfer p{margin:0 0 14px;color:#b8cbe3;line-height:1.5}</style></head><body>"
+                    + "<main class=\"card\"><span class=\"badge\">PENG 桌面</span><h1 class=\"title\">手机传输</h1>"
+                    + "<h2>上传首页壁纸</h2>"
                     + "<p class=\"hint\">选择图片后可拖动和缩放，以适配电视的 16:9 屏幕比例。</p>"
                     + "<label class=\"picker\" for=\"image\"><strong id=\"fileTitle\">选择图片</strong>"
                     + "<span id=\"fileHint\">支持手机相册中的常见图片格式</span></label>"
@@ -431,7 +491,12 @@ public final class FeatureActivity extends BasePageActivity {
                     + "<input id=\"zoom\" type=\"range\" min=\"1\" max=\"3\" step=\"0.01\" value=\"1\" "
                     + "oninput=\"changeZoom()\"></div><p class=\"tip\">拖动图片调整显示区域，上传后会生成 1920×1080 的壁纸。</p>"
                     + "</section><button id=\"submit\" onclick=\"upload()\" disabled>裁剪并上传壁纸</button>"
-                    + "<p id=\"status\" class=\"status\"></p></main><script>"
+                    + "<p id=\"status\" class=\"status\"></p><section class=\"transfer\"><h2>传输普通文件</h2>"
+                    + "<p>文件会保存到电视的 PENG 下载目录，单个文件最大 1GB。</p><label class=\"picker\" for=\"transferFile\">"
+                    + "<strong id=\"transferTitle\">选择文件</strong><span id=\"transferHint\">支持任意文件类型</span></label>"
+                    + "<input id=\"transferFile\" type=\"file\" onchange=\"chooseFile()\"><button id=\"transferSubmit\" "
+                    + "onclick=\"transferFile()\" disabled>传输文件到电视</button><p id=\"transferStatus\" class=\"status\"></p>"
+                    + "</section></main><script>"
                     + "var image,view,drag;function selectImage(){var f=document.getElementById('image').files[0],b="
                     + "document.getElementById('submit');if(!f){return;}document.getElementById('fileTitle').textContent=f.name;"
                     + "if(f.size>8*1024*1024){document.getElementById('fileHint').textContent='图片超过 8MB，请重新选择';"
@@ -459,9 +524,17 @@ public final class FeatureActivity extends BasePageActivity {
                     + "var g=out.getContext('2d'),sx=-view.x/view.scale,sy=-view.y/view.scale,sw=c.width/view.scale,sh=c.height/view.scale;"
                     + "g.drawImage(image,sx,sy,sw,sh,0,0,out.width,out.height);out.toBlob(function(blob){if(!blob||blob.size>8*1024*1024){"
                     + "s.textContent='裁剪后的图片超过 8MB，请降低图片细节后重试';s.className='status error';b.disabled=false;return;}"
-                    + "s.textContent='正在上传，请稍候...';var r=new XMLHttpRequest();r.open('POST','/upload');r.onload=function(){s.textContent="
+                    + "s.textContent='正在上传，请稍候...';var r=new XMLHttpRequest();r.open('POST','/wallpaper');r.onload=function(){s.textContent="
                     + "r.responseText;s.className='status '+(r.status===200?'success':'error');b.disabled=false;};r.onerror=function(){"
                     + "s.textContent='上传失败，请确认电视和手机仍在同一局域网';s.className='status error';b.disabled=false;};r.send(blob);},'image/jpeg',.92);}"
+                    + "function chooseFile(){var f=document.getElementById('transferFile').files[0],b=document.getElementById('transferSubmit');"
+                    + "if(!f){return;}document.getElementById('transferTitle').textContent=f.name;document.getElementById('transferHint').textContent="
+                    + "(f.size/1024/1024).toFixed(2)+' MB';b.disabled=f.size>1024*1024*1024;}"
+                    + "function transferFile(){var f=document.getElementById('transferFile').files[0],b=document.getElementById('transferSubmit'),"
+                    + "s=document.getElementById('transferStatus');if(!f){return;}b.disabled=true;s.className='status';s.textContent='正在传输，请稍候...';"
+                    + "var r=new XMLHttpRequest();r.open('POST','/file');r.setRequestHeader('X-File-Name',encodeURIComponent(f.name));r.onload=function(){"
+                    + "s.textContent=r.responseText;s.className='status '+(r.status===200?'success':'error');b.disabled=false;};r.onerror=function(){"
+                    + "s.textContent='传输失败，请确认电视和手机仍在同一局域网';s.className='status error';b.disabled=false;};r.send(f);}"
                     + "</script></body></html>";
         }
     }

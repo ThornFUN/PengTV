@@ -19,6 +19,7 @@ import android.graphics.Typeface;
 
 abstract class BasePageActivity extends Activity {
     private LinearLayout content;
+    private View firstAction;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,6 +30,7 @@ abstract class BasePageActivity extends Activity {
     }
 
     protected void showPage(String title, String subtitle) {
+        firstAction = null;
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(28), dp(20), dp(28), dp(28));
@@ -102,6 +104,17 @@ abstract class BasePageActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         params.bottomMargin = dp(10);
         content.addView(row, params);
+        if (firstAction == null) {
+            firstAction = row;
+            row.post(new Runnable() {
+                @Override
+                public void run() {
+                    if (firstAction == row) {
+                        row.requestFocus();
+                    }
+                }
+            });
+        }
     }
 
     protected void addInfo(String value) {

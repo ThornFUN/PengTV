@@ -1,0 +1,26 @@
+ext.pengTv = [
+        compileSdk: 35,
+        apps      : [
+                launcher: [
+                        applicationId: "com.peng.launcher",
+                        minSdk       : 14,
+                        targetSdk    : 35,
+                        versionCode  : 1,
+                        versionName  : "0.1.0"
+                ],
+                liveShow: [
+                        applicationId: "com.peng.live.show",
+                        minSdk       : 19,
+                        targetSdk    : 35,
+                        versionCode  : 1,
+                        versionName  : "0.1.0"
+                ],
+                movie   : [
+                        applicationId: "com.peng.movie",
+                        minSdk       : 19,
+                        targetSdk    : 28,
+                        versionCode  : 1,
+                        versionName  : "0.2.0-tvbox"
+                ]
+        ]
+]
