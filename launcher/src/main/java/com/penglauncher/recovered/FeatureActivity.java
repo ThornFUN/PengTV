@@ -1,12 +1,23 @@
 package com.penglauncher.recovered;
 
-import android.content.Context;
-import android.content.Intent;
+import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Intent;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.StateListDrawable;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
+import android.text.TextUtils;
+import android.view.Gravity;
 import android.view.View;
+import android.widget.LinearLayout;
+import android.widget.ListView;
+import android.widget.ScrollView;
+import android.widget.TextView;
 import android.widget.Toast;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -26,11 +37,10 @@ import java.net.URLDecoder;
 import java.nio.charset.Charset;
 import java.util.Enumeration;
 
-public class FeatureActivity extends BasePageActivity {
+abstract class FeatureActivity extends Activity {
     public static final String SETTINGS = "settings";
     public static final String ABOUT = "about";
     public static final String WALLPAPER_UPLOAD = "wallpaper_upload";
-    public static final String EXTRA_PAGE = "page";
     public static final String WALLPAPER_PREFERENCES = "home_wallpaper";
     public static final String WALLPAPER_PATH_KEY = "path";
     private static final int WALLPAPER_UPLOAD_PORT = 8080;
@@ -38,26 +48,196 @@ public class FeatureActivity extends BasePageActivity {
     private static final long MAX_FILE_BYTES = 1024L * 1024L * 1024L;
     private static final int MAX_REQUEST_HEADER_BYTES = 8192;
     private WallpaperUploadServer uploadServer;
-
-    public static void open(Context context, String page) {
-        Intent intent = new Intent(context, FeatureActivity.class);
-        intent.putExtra(EXTRA_PAGE, page);
-        context.startActivity(intent);
-    }
+    private LinearLayout content;
+    private View firstAction;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (getClass() != FeatureActivity.class) {
-            return;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            getWindow().setStatusBarColor(Color.rgb(16, 25, 42));
         }
-        if (ABOUT.equals(getIntent().getStringExtra(EXTRA_PAGE))) {
-            about();
-        } else if (WALLPAPER_UPLOAD.equals(getIntent().getStringExtra(EXTRA_PAGE))) {
-            showWallpaperUpload();
+    }
+
+    protected void showPage(String title, String subtitle) {
+        firstAction = null;
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(dp(28), dp(20), dp(28), dp(28));
+        root.setBackgroundColor(Color.rgb(20, 30, 49));
+        root.setClipChildren(false);
+        root.setClipToPadding(false);
+
+        LinearLayout header = new LinearLayout(this);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.addView(text(title, 28, Color.WHITE));
+        root.addView(header);
+
+        if (subtitle != null) {
+            TextView detail = text(subtitle, 15, Color.rgb(185, 203, 225));
+            LinearLayout.LayoutParams detailParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT);
+            detailParams.topMargin = dp(8);
+            root.addView(detail, detailParams);
+        }
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.setClipChildren(false);
+        scroll.setClipToPadding(false);
+        content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(0, dp(18), 0, 0);
+        content.setClipChildren(false);
+        content.setClipToPadding(false);
+        scroll.addView(content);
+        root.addView(scroll, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1.0f));
+        setContentView(root);
+    }
+
+    protected void addAction(String title, String detail, View.OnClickListener listener) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(20), dp(10), dp(18), dp(10));
+        setBackgroundCompat(row, interactiveBackground());
+        applyTvFocusFeedback(row);
+        row.setOnClickListener(listener);
+
+        LinearLayout textBlock = new LinearLayout(this);
+        textBlock.setOrientation(LinearLayout.VERTICAL);
+        textBlock.setGravity(Gravity.CENTER_VERTICAL);
+        row.addView(textBlock, new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f));
+
+        TextView name = text(title, 17, Color.WHITE);
+        name.setTypeface(Typeface.DEFAULT_BOLD);
+        name.setSingleLine(true);
+        name.setEllipsize(TextUtils.TruncateAt.END);
+        textBlock.addView(name);
+
+        TextView description = text(detail == null ? "" : detail, 14, Color.rgb(174, 188, 208));
+        description.setSingleLine(true);
+        description.setEllipsize(TextUtils.TruncateAt.END);
+        LinearLayout.LayoutParams descriptionParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        descriptionParams.topMargin = dp(3);
+        textBlock.addView(description, descriptionParams);
+
+        TextView arrow = text("›", 34, Color.rgb(205, 220, 241));
+        arrow.setGravity(Gravity.CENTER);
+        row.addView(arrow, new LinearLayout.LayoutParams(dp(28), dp(52)));
+
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        params.bottomMargin = dp(10);
+        content.addView(row, params);
+        if (firstAction == null) {
+            firstAction = row;
+            row.post(new Runnable() {
+                @Override
+                public void run() {
+                    if (firstAction == row) {
+                        row.requestFocus();
+                    }
+                }
+            });
+        }
+    }
+
+    protected void addInfo(String value) {
+        TextView view = text(value, 16, Color.rgb(217, 228, 243));
+        view.setPadding(dp(12), dp(12), dp(12), dp(12));
+        content.addView(view);
+    }
+
+    protected void addHighlightInfo(String label, String value) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(28), dp(20), dp(28), dp(20));
+        setBackgroundCompat(card, roundedRect(Color.rgb(42, 92, 151), dp(14)));
+
+        card.addView(text(label, 18, Color.WHITE));
+        TextView detail = text(value, 30, Color.WHITE);
+        detail.setTypeface(Typeface.DEFAULT_BOLD);
+        detail.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams detailParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        detailParams.topMargin = dp(10);
+        card.addView(detail, detailParams);
+
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        cardParams.bottomMargin = dp(14);
+        content.addView(card, cardParams);
+    }
+
+    protected TextView text(String value, int sizeSp, int color) {
+        TextView view = new TextView(this);
+        view.setText(value);
+        view.setTextColor(color);
+        view.setTextSize(sizeSp);
+        view.setLineSpacing(0.0f, 1.2f);
+        return view;
+    }
+
+    protected int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    protected StateListDrawable interactiveBackground() {
+        StateListDrawable drawable = new StateListDrawable();
+        GradientDrawable focused = roundedRect(Color.rgb(73, 126, 193), dp(12));
+        focused.setStroke(dp(2), Color.WHITE);
+        drawable.addState(new int[]{android.R.attr.state_focused}, focused);
+        drawable.addState(new int[]{android.R.attr.state_selected}, focused);
+        drawable.addState(new int[]{android.R.attr.state_pressed},
+                roundedRect(Color.rgb(56, 101, 162), dp(12)));
+        drawable.addState(new int[]{}, roundedRect(Color.rgb(40, 57, 86), dp(12)));
+        return drawable;
+    }
+
+    protected void applyTvFocusFeedback(View view) {
+        view.setFocusable(true);
+        view.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View focusedView, boolean focused) {
+                focusedView.animate().cancel();
+                focusedView.animate()
+                        .scaleX(focused ? 1.02f : 1.0f)
+                        .scaleY(focused ? 1.02f : 1.0f)
+                        .setDuration(140)
+                        .start();
+            }
+        });
+    }
+
+    protected void setBackgroundCompat(View view, android.graphics.drawable.Drawable drawable) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            view.setBackground(drawable);
         } else {
-            settings();
+            view.setBackgroundDrawable(drawable);
         }
+    }
+
+    protected void applyDialogFocusStyle(final AlertDialog dialog) {
+        dialog.setOnShowListener(dialogInterface -> {
+            ListView list = dialog.getListView();
+            if (list != null) {
+                list.setSelector(interactiveBackground());
+                if (list.getAdapter() != null && list.getAdapter().getCount() > 0) {
+                    list.setSelection(0);
+                    list.requestFocus();
+                }
+            }
+        });
+    }
+
+    private GradientDrawable roundedRect(int color, int radius) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(color);
+        drawable.setCornerRadius(radius);
+        return drawable;
     }
 
     protected void settings() {
@@ -201,13 +381,9 @@ public class FeatureActivity extends BasePageActivity {
         }
     }
 
-    protected void openFeaturePage(String page) {
-        FeatureActivity.open(this, page);
-    }
+    protected abstract void openFeaturePage(String page);
 
-    protected void closeFeaturePage() {
-        finish();
-    }
+    protected abstract void closeFeaturePage();
 
     private String uploadAddresses() {
         StringBuilder addresses = new StringBuilder();

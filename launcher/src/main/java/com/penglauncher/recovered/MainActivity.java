@@ -17,7 +17,6 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
@@ -54,8 +53,6 @@ public final class MainActivity extends FeatureActivity {
     private static final int COLUMN_COUNT = 5;
     private static final int INITIAL_CARD_COUNT = 5;
     private static final int DESKTOP_CARD_COUNT = 5;
-    private static final int MAX_RELOAD_ATTEMPTS = 10;
-    private static final long RELOAD_DELAY_MILLIS = 1000L;
     private static final int ICON_CANVAS_SIZE_DP = 96;
     private static final int ICON_CONTENT_SIZE_DP = 66;
     private static final String CARD_STATE_AUTO = "auto";
@@ -93,31 +90,18 @@ public final class MainActivity extends FeatureActivity {
             clockHandler.postDelayed(this, 30000L);
         }
     };
-    private final Handler reloadHandler = new Handler();
-    private int reloadAttempts;
     private boolean packageReceiverRegistered;
     private final BroadcastReceiver packageChangedReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             normalizedIconCache.evictAll();
-            refreshAvailableApps(true);
-        }
-    };
-    private final Runnable reloadCardsRunnable = new Runnable() {
-        @Override
-        public void run() {
-            if (reloadAttempts >= MAX_RELOAD_ATTEMPTS) {
-                return;
-            }
-            reloadAttempts++;
-            refreshAvailableApps(false);
+            refreshAvailableApps();
         }
     };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        android.util.Log.e("PENG", "== onCreate called, task=" + getTaskId());
         if (getActionBar() != null) {
             getActionBar().hide();
         }
@@ -125,24 +109,16 @@ public final class MainActivity extends FeatureActivity {
         initializeCardStates();
         fillAutomaticCards();
         buildHome();
-        scheduleReloadIfMissing();
-    }
-
-    @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        android.util.Log.e("PENG", "== onNewIntent called, action=" + intent.getAction());
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        android.util.Log.e("PENG", "== onResume called");
         registerPackageChangeReceiver();
         clockHandler.removeCallbacks(updateClock);
         clockHandler.post(updateClock);
         if (!featurePageShown && homeBackground != null) {
-            refreshAvailableApps(true);
+            refreshAvailableApps();
             applyHomeWallpaper();
         }
     }
@@ -169,7 +145,6 @@ public final class MainActivity extends FeatureActivity {
     @Override
     protected void onPause() {
         clockHandler.removeCallbacks(updateClock);
-        reloadHandler.removeCallbacks(reloadCardsRunnable);
         unregisterPackageChangeReceiver();
         super.onPause();
     }
@@ -1038,38 +1013,12 @@ public final class MainActivity extends FeatureActivity {
         }
     }
 
-    private void refreshAvailableApps(boolean resetReloadAttempts) {
-        if (resetReloadAttempts) {
-            reloadAttempts = 0;
-        }
+    private void refreshAvailableApps() {
         availableApps = loadAvailableApps();
         fillAutomaticCards();
         if (cardGrid != null) {
             refreshCards();
         }
-        scheduleReloadIfMissing();
-    }
-
-    private void scheduleReloadIfMissing() {
-        reloadHandler.removeCallbacks(reloadCardsRunnable);
-        if (reloadAttempts >= MAX_RELOAD_ATTEMPTS || !hasPendingCardRefresh()) {
-            return;
-        }
-        reloadHandler.postDelayed(reloadCardsRunnable, RELOAD_DELAY_MILLIS);
-    }
-
-    private boolean hasPendingCardRefresh() {
-        for (int index = 0; index < INITIAL_CARD_COUNT; index++) {
-            if (CARD_STATE_AUTO.equals(cardState(index)) && !hasSavedChoice(index)) {
-                return true;
-            }
-        }
-        for (int index = 0; index < DESKTOP_CARD_COUNT; index++) {
-            if (hasSavedChoice(index) && choiceAt(index) == null) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private Set<ComponentName> savedComponents() {
