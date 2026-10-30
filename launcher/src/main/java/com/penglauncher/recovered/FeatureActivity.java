@@ -22,6 +22,7 @@ import android.widget.ListView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.EditText;
 import androidx.core.content.FileProvider;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -42,6 +43,7 @@ import java.nio.charset.Charset;
 import java.util.Enumeration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -65,6 +67,21 @@ abstract class FeatureActivity extends Activity {
     private List<File> storageRoots;
     private File currentDirectory;
     private File activeStorageRoot;
+
+    private enum FileOperation {
+        COPY("复制"),
+        MOVE("移动");
+
+        private final String label;
+
+        FileOperation(String label) {
+            this.label = label;
+        }
+    }
+
+    private interface FileTask {
+        void run() throws IOException;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -112,6 +129,11 @@ abstract class FeatureActivity extends Activity {
     }
 
     protected void addAction(String title, String detail, View.OnClickListener listener) {
+        addAction(title, detail, listener, null);
+    }
+
+    protected void addAction(String title, String detail, View.OnClickListener listener,
+            View.OnLongClickListener longClickListener) {
         int icon = 0;
         if (title.startsWith("📁 ")) {
             icon = R.drawable.ic_file_manager_folder;
@@ -126,6 +148,9 @@ abstract class FeatureActivity extends Activity {
         setBackgroundCompat(row, interactiveBackground());
         applyTvFocusFeedback(row);
         row.setOnClickListener(listener);
+        if (longClickListener != null) {
+            row.setOnLongClickListener(longClickListener);
+        }
 
         LinearLayout textBlock = new LinearLayout(this);
         textBlock.setOrientation(LinearLayout.VERTICAL);
@@ -395,10 +420,72 @@ abstract class FeatureActivity extends Activity {
                 return left.getName().compareToIgnoreCase(right.getName());
             }
         });
-        for (final File child : children) addAction(
-                (child.isDirectory() ? "📁 " : "📄 ") + child.getName(),
-                child.isDirectory() ? "目录" : child.length() / 1024 + " KB",
-                v -> { if (child.isDirectory()) showDirectory(child); else openFile(child); });
+        for (final File child : children) {
+            if (child.isDirectory()) {
+                addAction("📁 " + child.getName(), "目录（长按可重命名或删除）",
+                        v -> showDirectory(child), v -> {
+                            showDirectoryActions(child);
+                            return true;
+                        });
+            } else {
+                addAction("📄 " + child.getName(), child.length() / 1024 + " KB",
+                        v -> showFileActions(child));
+            }
+        }
+    }
+
+    private void showFileActions(final File file) {
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(file.getName())
+                .setItems(new String[]{"打开", "重命名", "删除", "复制", "移动"},
+                        (ignoredDialog, which) -> {
+                            switch (which) {
+                                case 0:
+                                    openFile(file);
+                                    break;
+                                case 1:
+                                    showRenameDialog(file);
+                                    break;
+                                case 2:
+                                    confirmDelete(file);
+                                    break;
+                                case 3:
+                                    chooseTargetStorage(file, FileOperation.COPY);
+                                    break;
+                                case 4:
+                                    chooseTargetStorage(file, FileOperation.MOVE);
+                                    break;
+                                default:
+                                    break;
+                            }
+                        })
+                .create();
+        applyDialogFocusStyle(dialog);
+        dialog.show();
+    }
+
+    private void showDirectoryActions(final File directory) {
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(directory.getName())
+                .setItems(new String[]{"打开目录", "重命名", "删除"},
+                        (ignoredDialog, which) -> {
+                            switch (which) {
+                                case 0:
+                                    showDirectory(directory);
+                                    break;
+                                case 1:
+                                    showRenameDialog(directory);
+                                    break;
+                                case 2:
+                                    confirmDelete(directory);
+                                    break;
+                                default:
+                                    break;
+                            }
+                        })
+                .create();
+        applyDialogFocusStyle(dialog);
+        dialog.show();
     }
 
     private void openFile(File file) {
@@ -409,6 +496,216 @@ abstract class FeatureActivity extends Activity {
             startActivity(intent);
         } catch (android.content.ActivityNotFoundException ignored) {
             Toast.makeText(this, "未找到可打开此文件的应用", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showRenameDialog(final File file) {
+        final EditText nameInput = new EditText(this);
+        nameInput.setSingleLine(true);
+        nameInput.setText(file.getName());
+        nameInput.setSelectAllOnFocus(true);
+        int padding = dp(24);
+        nameInput.setPadding(padding, 0, padding, 0);
+
+        final AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("重命名")
+                .setView(nameInput)
+                .setNegativeButton("取消", null)
+                .setPositiveButton("确认", null)
+                .create();
+        dialog.setOnShowListener(ignoredDialog -> {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                String newName = nameInput.getText().toString();
+                String validationError = validateFileName(newName);
+                if (validationError != null) {
+                    nameInput.setError(validationError);
+                    return;
+                }
+                File target = new File(file.getParentFile(), newName);
+                if (target.exists() && !target.equals(file)) {
+                    nameInput.setError("当前目录已存在同名文件");
+                    return;
+                }
+                if (!file.equals(target) && !file.renameTo(target)) {
+                    Toast.makeText(this, "重命名失败", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                dialog.dismiss();
+                Toast.makeText(this, "已重命名", Toast.LENGTH_SHORT).show();
+                refreshCurrentDirectory();
+            });
+            nameInput.requestFocus();
+        });
+        dialog.show();
+    }
+
+    private String validateFileName(String name) {
+        if (name.trim().isEmpty()) return "名称不能为空";
+        if (".".equals(name) || "..".equals(name)) return "名称无效";
+        for (int index = 0; index < name.length(); index++) {
+            char character = name.charAt(index);
+            if (character < 32 || character == '/' || character == '\\'
+                    || character == ':' || character == '*' || character == '?'
+                    || character == '"' || character == '<' || character == '>'
+                    || character == '|') {
+                return "名称包含非法路径字符";
+            }
+        }
+        return null;
+    }
+
+    private void confirmDelete(final File file) {
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("删除 " + file.getName())
+                .setMessage(file.isDirectory() ? "将递归删除该目录及其全部内容，且无法恢复。"
+                        : "删除后无法恢复。")
+                .setNegativeButton("取消", null)
+                .setPositiveButton("删除", (ignoredDialog, which) -> runFileTask(
+                        "删除失败", "已删除", new FileTask() {
+                            @Override
+                            public void run() throws IOException {
+                                deleteRecursively(file);
+                            }
+                        }))
+                .create();
+        applyDialogFocusStyle(dialog);
+        dialog.show();
+    }
+
+    private void chooseTargetStorage(final File source, final FileOperation operation) {
+        if (storageRoots == null || storageRoots.isEmpty()) {
+            Toast.makeText(this, "未找到可用存储空间", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String[] labels = new String[storageRoots.size()];
+        for (int index = 0; index < storageRoots.size(); index++) {
+            labels[index] = storageRoots.get(index).getAbsolutePath();
+        }
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(operation.label + "到哪个存储空间？")
+                .setItems(labels, (ignoredDialog, which) ->
+                        chooseTargetDirectory(source, operation, storageRoots.get(which)))
+                .setNegativeButton("取消", null)
+                .create();
+        applyDialogFocusStyle(dialog);
+        dialog.show();
+    }
+
+    private void chooseTargetDirectory(final File source, final FileOperation operation,
+            final File directory) {
+        File[] children = directory.listFiles();
+        if (children == null) {
+            Toast.makeText(this, "无法读取目标目录", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        List<File> directories = new ArrayList<>();
+        for (File child : children) {
+            if (child.isDirectory()) directories.add(child);
+        }
+        Collections.sort(directories, new Comparator<File>() {
+            @Override
+            public int compare(File left, File right) {
+                return left.getName().compareToIgnoreCase(right.getName());
+            }
+        });
+        String[] labels = new String[directories.size()];
+        for (int index = 0; index < directories.size(); index++) {
+            labels[index] = "📁 " + directories.get(index).getName();
+        }
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("目标目录\n" + directory.getAbsolutePath())
+                .setItems(labels, (ignoredDialog, which) ->
+                        chooseTargetDirectory(source, operation, directories.get(which)))
+                .setNegativeButton("取消", null)
+                .setPositiveButton("选择此文件夹", (ignoredDialog, which) ->
+                        transferFile(source, directory, operation))
+                .create();
+        applyDialogFocusStyle(dialog);
+        dialog.show();
+    }
+
+    private void transferFile(final File source, final File targetDirectory,
+            final FileOperation operation) {
+        runFileTask(operation.label + "失败", "已" + operation.label, new FileTask() {
+            @Override
+            public void run() throws IOException {
+                if (!targetDirectory.isDirectory()) {
+                    throw new IOException("target directory is unavailable");
+                }
+                File target = new File(targetDirectory, source.getName());
+                if (source.getCanonicalFile().equals(target.getCanonicalFile())) {
+                    if (operation == FileOperation.MOVE) return;
+                    throw new IOException("目标文件与源文件相同");
+                }
+                if (target.exists()) throw new IOException("目标目录已存在同名文件");
+
+                File temporary = File.createTempFile(".peng-copy-", ".tmp", targetDirectory);
+                try {
+                    copyFile(source, temporary);
+                    if (!temporary.renameTo(target)) {
+                        throw new IOException("cannot finalize target file");
+                    }
+                } finally {
+                    if (temporary.exists()) temporary.delete();
+                }
+                if (operation == FileOperation.MOVE && !source.delete()) {
+                    throw new IOException("cannot delete source file");
+                }
+            }
+        });
+    }
+
+    private void copyFile(File source, File target) throws IOException {
+        try (InputStream input = new BufferedInputStream(new java.io.FileInputStream(source));
+                OutputStream output = new FileOutputStream(target)) {
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = input.read(buffer)) != -1) {
+                output.write(buffer, 0, read);
+            }
+        }
+    }
+
+    private void deleteRecursively(File file) throws IOException {
+        if (file.isDirectory() && !isSymbolicLink(file)) {
+            File[] children = file.listFiles();
+            if (children == null) throw new IOException("cannot read directory");
+            for (File child : children) deleteRecursively(child);
+        }
+        if (!file.delete()) throw new IOException("cannot delete file");
+    }
+
+    private boolean isSymbolicLink(File file) throws IOException {
+        return !file.getCanonicalFile().equals(file.getAbsoluteFile());
+    }
+
+    private void runFileTask(final String failureMessage, final String successMessage,
+            final FileTask task) {
+        Toast.makeText(this, "正在处理…", Toast.LENGTH_SHORT).show();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    task.run();
+                    runOnUiThread(() -> {
+                        Toast.makeText(FeatureActivity.this, successMessage, Toast.LENGTH_SHORT).show();
+                        refreshCurrentDirectory();
+                    });
+                } catch (IOException | SecurityException exception) {
+                    runOnUiThread(() -> {
+                        String detail = exception.getMessage();
+                        String message = TextUtils.isEmpty(detail)
+                                ? failureMessage : failureMessage + "：" + detail;
+                        Toast.makeText(FeatureActivity.this, message, Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+        }, "file-operation").start();
+    }
+
+    private void refreshCurrentDirectory() {
+        if (currentDirectory != null && currentDirectory.isDirectory()) {
+            showDirectory(currentDirectory);
         }
     }
 
