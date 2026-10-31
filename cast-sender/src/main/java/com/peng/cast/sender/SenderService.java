@@ -26,8 +26,9 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
+import android.graphics.Point;
 import android.util.Log;
-import android.util.DisplayMetrics;
+import android.view.Display;
 import android.view.Surface;
 
 import com.peng.cast.protocol.CastProtocol;
@@ -56,6 +57,7 @@ public final class SenderService extends Service {
 
     private volatile boolean streaming;
     private volatile boolean audioStreaming;
+    private volatile boolean videoRestartRequested;
     private final Object outputLock = new Object();
     private Thread streamThread;
     private Thread audioThread;
@@ -63,6 +65,10 @@ public final class SenderService extends Service {
     private MediaCodec encoder;
     private MediaCodec audioEncoder;
     private VirtualDisplay virtualDisplay;
+    private DisplayManager displayManager;
+    private DisplayManager.DisplayListener displayListener;
+    private int videoWidth;
+    private int videoHeight;
     private AudioRecord audioRecord;
     private Socket socket;
     private DataOutputStream output;
@@ -75,10 +81,12 @@ public final class SenderService extends Service {
             stopSelf(startId);
             return START_NOT_STICKY;
         }
+
         promoteToForeground();
         if (intent == null || streaming) {
             return START_NOT_STICKY;
         }
+
         String host = intent.getStringExtra(EXTRA_HOST);
         int resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, 0);
         Intent projectionData = intent.getParcelableExtra(EXTRA_PROJECTION_DATA);
@@ -89,6 +97,45 @@ public final class SenderService extends Service {
         }
         startStreaming(host.trim(), resultCode, projectionData, captureMicrophone);
         return START_NOT_STICKY;
+    }
+
+    private int[] getCaptureDimensions() {
+        DisplayManager manager = (DisplayManager) getSystemService(Context.DISPLAY_SERVICE);
+        Display display = manager.getDisplay(Display.DEFAULT_DISPLAY);
+        Point size = new Point();
+        display.getRealSize(size);
+        return scaleTo720p(size.x, size.y);
+    }
+
+    private void registerDisplayListener() {
+        displayManager = (DisplayManager) getSystemService(Context.DISPLAY_SERVICE);
+        displayListener = new DisplayManager.DisplayListener() {
+            @Override
+            public void onDisplayAdded(int displayId) {
+            }
+
+            @Override
+            public void onDisplayRemoved(int displayId) {
+            }
+
+            @Override
+            public void onDisplayChanged(int displayId) {
+                if (displayId == Display.DEFAULT_DISPLAY) {
+                    int[] dimensions = getCaptureDimensions();
+                    videoRestartRequested = dimensions[0] != videoWidth
+                            || dimensions[1] != videoHeight;
+                }
+            }
+        };
+        displayManager.registerDisplayListener(displayListener, new Handler(Looper.getMainLooper()));
+    }
+
+    private void unregisterDisplayListener() {
+        if (displayManager != null && displayListener != null) {
+            displayManager.unregisterDisplayListener(displayListener);
+        }
+        displayManager = null;
+        displayListener = null;
     }
 
     @Override
@@ -139,6 +186,7 @@ public final class SenderService extends Service {
 
             connect(host);
             startEncoder();
+            registerDisplayListener();
             startAudioCaptureIfAvailable(captureMicrophone);
             drainEncoder();
         } catch (IOException | RuntimeException exception) {
@@ -159,8 +207,7 @@ public final class SenderService extends Service {
     }
 
     private void startEncoder() throws IOException {
-        DisplayMetrics metrics = getResources().getDisplayMetrics();
-        int[] dimensions = scaleTo720p(metrics.widthPixels, metrics.heightPixels);
+        int[] dimensions = getCaptureDimensions();
         MediaFormat format = MediaFormat.createVideoFormat("video/avc", dimensions[0], dimensions[1]);
         format.setInteger(MediaFormat.KEY_COLOR_FORMAT,
                 MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
@@ -177,8 +224,11 @@ public final class SenderService extends Service {
             Surface inputSurface = encoder.createInputSurface();
             encoder.start();
             virtualDisplay = projection.createVirtualDisplay("PENG投屏", dimensions[0], dimensions[1],
-                    metrics.densityDpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                    getResources().getDisplayMetrics().densityDpi,
+                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                     inputSurface, null, null);
+            videoWidth = dimensions[0];
+            videoHeight = dimensions[1];
         } catch (RuntimeException exception) {
             releaseEncoder();
             throw new IOException("Unable to start H.264 encoder", exception);
@@ -189,6 +239,14 @@ public final class SenderService extends Service {
         MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
         ByteBuffer[] outputBuffers = encoder.getOutputBuffers();
         while (streaming) {
+            if (videoRestartRequested) {
+                videoRestartRequested = false;
+                releaseVirtualDisplay();
+                releaseEncoder();
+                startEncoder();
+                outputBuffers = encoder.getOutputBuffers();
+                continue;
+            }
             int outputIndex = encoder.dequeueOutputBuffer(bufferInfo, 10_000);
             if (outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                 sendVideoConfig(encoder.getOutputFormat());
@@ -450,6 +508,7 @@ public final class SenderService extends Service {
         closeSocket();
         releaseVirtualDisplay();
         releaseEncoder();
+        unregisterDisplayListener();
         releaseProjection();
         releaseWakeLock();
     }
