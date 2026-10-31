@@ -14,15 +14,25 @@ import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
-import android.widget.EditText;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public final class SenderActivity extends Activity {
     private static final int REQUEST_CAPTURE = 100;
     private static final int REQUEST_RECORD_AUDIO = 101;
-    private EditText receiverAddress;
+    private static final int MAX_RECEIVER_HISTORY = 10;
+    private static final String PREFERENCES_NAME = "cast";
+    private static final String RECEIVER_HISTORY_KEY = "receiver_history";
+    private static final String LEGACY_RECEIVER_HOST_KEY = "receiver_host";
+
+    private AutoCompleteTextView receiverAddress;
+    private ArrayAdapter<String> receiverAddressAdapter;
     private TextView statusView;
 
     private final BroadcastReceiver sessionErrorReceiver = new BroadcastReceiver() {
@@ -48,10 +58,24 @@ public final class SenderActivity extends Activity {
         root.addView(instructions, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
-        receiverAddress = new EditText(this);
+        receiverAddress = new AutoCompleteTextView(this);
         receiverAddress.setHint("电视 IP，例如 192.168.31.239");
         receiverAddress.setInputType(InputType.TYPE_CLASS_TEXT);
         receiverAddress.setSingleLine(true);
+        receiverAddressAdapter = new ArrayAdapter<String>(this,
+                android.R.layout.simple_dropdown_item_1line, loadReceiverHistory());
+        receiverAddress.setAdapter(receiverAddressAdapter);
+        receiverAddress.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                receiverAddress.showDropDown();
+            }
+        });
+        List<String> receiverHistory = loadReceiverHistory();
+        if (!receiverHistory.isEmpty()) {
+            receiverAddress.setText(receiverHistory.get(0));
+            receiverAddress.setSelection(receiverAddress.length());
+        }
         LinearLayout.LayoutParams addressParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         addressParams.topMargin = dp(24);
@@ -69,6 +93,19 @@ public final class SenderActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         buttonParams.topMargin = dp(16);
         root.addView(startButton, buttonParams);
+
+        Button stopButton = new Button(this);
+        stopButton.setText("停止投屏");
+        stopButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                stopCasting();
+            }
+        });
+        LinearLayout.LayoutParams stopButtonParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        stopButtonParams.topMargin = dp(8);
+        root.addView(stopButton, stopButtonParams);
 
         statusView = new TextView(this);
         statusView.setTextSize(14);
@@ -102,7 +139,7 @@ public final class SenderActivity extends Activity {
             receiverAddress.setError("请输入电视 IP 地址");
             return;
         }
-        getSharedPreferences("cast", MODE_PRIVATE).edit().putString("receiver_host", host).apply();
+        rememberReceiverHost(host);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
                 && checkSelfPermission(Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -149,6 +186,58 @@ public final class SenderActivity extends Activity {
         }
         Toast.makeText(this, "正在连接电视", Toast.LENGTH_SHORT).show();
         statusView.setText("正在连接电视…");
+    }
+
+    private void stopCasting() {
+        Intent serviceIntent = new Intent(this, SenderService.class)
+                .setAction(SenderService.ACTION_STOP);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent);
+        } else {
+            startService(serviceIntent);
+        }
+        statusView.setText("已停止投屏");
+    }
+
+    private List<String> loadReceiverHistory() {
+        android.content.SharedPreferences preferences =
+                getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE);
+        String stored = preferences.getString(RECEIVER_HISTORY_KEY, "");
+        if (stored.isEmpty()) {
+            stored = preferences.getString(LEGACY_RECEIVER_HOST_KEY, "");
+        }
+        List<String> hosts = new ArrayList<String>();
+        if (stored.isEmpty()) {
+            return hosts;
+        }
+        for (String host : stored.split("\n")) {
+            if (!host.isEmpty() && !hosts.contains(host)) {
+                hosts.add(host);
+            }
+        }
+        return hosts;
+    }
+
+    private void rememberReceiverHost(String host) {
+        List<String> hosts = loadReceiverHistory();
+        hosts.remove(host);
+        hosts.add(0, host);
+        if (hosts.size() > MAX_RECEIVER_HISTORY) {
+            hosts = new ArrayList<String>(hosts.subList(0, MAX_RECEIVER_HISTORY));
+        }
+        StringBuilder stored = new StringBuilder();
+        for (String item : hosts) {
+            if (stored.length() > 0) {
+                stored.append('\n');
+            }
+            stored.append(item);
+        }
+        getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE).edit()
+                .putString(RECEIVER_HISTORY_KEY, stored.toString())
+                .apply();
+        receiverAddressAdapter.clear();
+        receiverAddressAdapter.addAll(hosts);
+        receiverAddressAdapter.notifyDataSetChanged();
     }
 
     private int dp(int value) {

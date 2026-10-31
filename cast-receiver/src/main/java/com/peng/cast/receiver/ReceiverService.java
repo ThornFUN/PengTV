@@ -27,10 +27,13 @@ public final class ReceiverService extends Service {
     private static final String TAG = "CastReceiver";
     private final LocalBinder binder = new LocalBinder();
     private final Object lifecycleLock = new Object();
+    private final Object sessionLock = new Object();
     private volatile Surface surface;
     private volatile boolean running;
     private Thread serverThread;
     private ServerSocket serverSocket;
+    private Socket activeSocket;
+    private int activeSessionId;
     private MediaCodec decoder;
     private MediaCodec audioDecoder;
     private AudioTrack audioTrack;
@@ -112,8 +115,11 @@ public final class ReceiverService extends Service {
     private void stopReceiver() {
         running = false;
         closeServerSocket();
-        releaseDecoder();
-        releaseAudioDecoder();
+        synchronized (sessionLock) {
+            closeActiveSocket();
+            releaseDecoder();
+            releaseAudioDecoder();
+        }
     }
 
     private void acceptConnections() {
@@ -122,8 +128,14 @@ public final class ReceiverService extends Service {
             while (running) {
                 Socket socket = serverSocket.accept();
                 socket.setTcpNoDelay(true);
+                final int sessionId = replaceActiveSocket(socket);
                 notifySenderConnected();
-                handleConnection(socket);
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        handleConnection(socket, sessionId);
+                    }
+                }, "cast-receiver-session-" + sessionId).start();
             }
         } catch (IOException exception) {
             if (running) {
@@ -134,22 +146,27 @@ public final class ReceiverService extends Service {
         }
     }
 
-    private void handleConnection(Socket socket) {
+    private void handleConnection(Socket socket, int sessionId) {
         try {
             DataInputStream input = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
             CastProtocol.readHeader(input);
             while (running && !socket.isClosed()) {
                 CastProtocol.Packet packet = CastProtocol.readPacket(input);
-                if (packet.type == CastProtocol.TYPE_CONFIG) {
-                    configureDecoder(CastProtocol.decodeVideoConfig(packet.payload));
-                } else if (packet.type == CastProtocol.TYPE_FRAME) {
-                    queueFrame(packet);
-                } else if (packet.type == CastProtocol.TYPE_AUDIO_CONFIG) {
-                    configureAudioDecoder(CastProtocol.decodeAudioConfig(packet.payload));
-                } else if (packet.type == CastProtocol.TYPE_AUDIO_FRAME) {
-                    queueAudio(packet);
-                } else if (packet.type == CastProtocol.TYPE_END) {
-                    break;
+                synchronized (sessionLock) {
+                    if (!isActiveSession(socket, sessionId)) {
+                        break;
+                    }
+                    if (packet.type == CastProtocol.TYPE_CONFIG) {
+                        configureDecoder(CastProtocol.decodeVideoConfig(packet.payload));
+                    } else if (packet.type == CastProtocol.TYPE_FRAME) {
+                        queueFrame(packet);
+                    } else if (packet.type == CastProtocol.TYPE_AUDIO_CONFIG) {
+                        configureAudioDecoder(CastProtocol.decodeAudioConfig(packet.payload));
+                    } else if (packet.type == CastProtocol.TYPE_AUDIO_FRAME) {
+                        queueAudio(packet);
+                    } else if (packet.type == CastProtocol.TYPE_END) {
+                        break;
+                    }
                 }
             }
         } catch (IOException exception) {
@@ -159,9 +176,46 @@ public final class ReceiverService extends Service {
                 socket.close();
             } catch (IOException ignored) {
             }
+            if (finishActiveSession(socket, sessionId)) {
+                notifySenderDisconnected();
+            }
+        }
+    }
+
+    private int replaceActiveSocket(Socket socket) {
+        synchronized (sessionLock) {
+            closeActiveSocket();
+            activeSocket = socket;
+            activeSessionId++;
+            return activeSessionId;
+        }
+    }
+
+    private boolean isActiveSession(Socket socket, int sessionId) {
+        return activeSocket == socket && activeSessionId == sessionId;
+    }
+
+    private boolean finishActiveSession(Socket socket, int sessionId) {
+        synchronized (sessionLock) {
+            if (!isActiveSession(socket, sessionId)) {
+                return false;
+            }
+            activeSocket = null;
             releaseDecoder();
             releaseAudioDecoder();
-            notifySenderDisconnected();
+            return true;
+        }
+    }
+
+    private void closeActiveSocket() {
+        Socket socket = activeSocket;
+        activeSocket = null;
+        activeSessionId++;
+        if (socket != null) {
+            try {
+                socket.close();
+            } catch (IOException ignored) {
+            }
         }
     }
 

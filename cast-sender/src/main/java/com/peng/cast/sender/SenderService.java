@@ -40,6 +40,7 @@ import java.nio.ByteBuffer;
 
 public final class SenderService extends Service {
     public static final String ACTION_SESSION_ERROR = "com.peng.cast.sender.SESSION_ERROR";
+    public static final String ACTION_STOP = "com.peng.cast.sender.STOP";
     public static final String EXTRA_ERROR_MESSAGE = "error_message";
 
     private static final String TAG = "CastSender";
@@ -68,6 +69,11 @@ public final class SenderService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null && ACTION_STOP.equals(intent.getAction())) {
+            stopStreaming();
+            stopSelf(startId);
+            return START_NOT_STICKY;
+        }
         promoteToForeground();
         if (intent == null || streaming) {
             return START_NOT_STICKY;
