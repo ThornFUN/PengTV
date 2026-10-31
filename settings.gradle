@@ -22,9 +22,12 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "PengTV"
+rootProject.name = "PengLive"
 include(":launcher")
 include(":live-show")
 include(":movie")
 include(":movie:quickjs")
 include(":movie:pyramid")
+include(":cast-protocol")
+include(":cast-receiver")
+include(":cast-sender")

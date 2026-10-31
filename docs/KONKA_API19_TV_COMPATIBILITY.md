@@ -27,6 +27,67 @@
 
 不要给这台康佳电视安装旧的 `PENG-Movie-API19-arm64-release.apk`。该文件只包含 `arm64-v8a` JNI，不能匹配电视的 32 位应用进程。
 
+## 已验证的第三方影视应用
+
+| 应用 | 版本 | 来源 | 兼容性与验证结果 |
+|---|---|---|---|
+| VLC for Android | 3.7.1 | [VideoLAN 官方下载](https://get.videolan.org/vlc-android/3.7.1/VLC-Android-3.7.1-armeabi-v7a.apk)，源码：[videolan/vlc-android](https://github.com/videolan/vlc-android) | 选择 `armeabi-v7a` APK；Manifest 为 `minSdkVersion=17`、`targetSdkVersion=36`。已于 2026-10-31 通过 ADB 在本机安装成功，`org.videolan.vlc/.StartActivity` 可恢复到前台且进程持续运行，未见崩溃。首次使用引导尚未完成，未验证实际媒体播放。 |
+| TVBoxOS | 当前 `main`：`ab11d289e09963a9daf65ca7f6b7a9a8cbe184e1` | [q215613905/TVBoxOS](https://github.com/q215613905/TVBoxOS) | 已构建 `java32Debug` 产物 `TVBox_debug-java32.apk`（SHA-256：`f93795524940adc3cf853006b36faba5a88b5733d2c78eba3f308bea63c72409`）。最终 Manifest 为 `minSdkVersion=19`、`targetSdkVersion=28`，且只含 `armeabi-v7a` JNI 库。电视上已有同包名 `com.github.tvbox.osc.jun`、不同签名的版本，覆盖安装被 `INSTALL_PARSE_FAILED_INCONSISTENT_CERTIFICATES` 阻止；为保留原应用数据，未卸载。已安装的同包名版本可启动到 `HomeActivity`。 |
+| 我的电视（MyTV） | 1.4.4 通用版 | [lizongying/my-tv](https://github.com/lizongying/my-tv)，[官方 Release APK](https://github.com/lizongying/my-tv/releases/download/v1.4.4/my-tv-v1.4.4.apk) | 该项目源码 `minSdk=17`，Release APK 的 Manifest 为 `minSdkVersion=17`、`targetSdkVersion=33`。已于 2026-10-31 在本机 ADB 安装成功，`com.lizongying.mytv/.MainActivity` 在前台、进程持续运行，未见启动崩溃。此版本为支持 Android 4.2+ 的通用直播版；未验证各直播频道的可用性。 |
+
+VLC 适合播放 U 盘、本地硬盘、SMB/NAS、DLNA/UPnP 及用户合法拥有的网络媒体；支持字幕、多音轨及软硬解切换。下载包 SHA-256 已按 VideoLAN 同目录校验文件验证。
+
+TVBoxOS 的上游 Room 2.3 注解处理器无法在 macOS ARM64 主机加载 SQLite 校验库；本次临时构建将 `room-runtime` 与 `room-compiler` 同步为 2.5.2 以完成编译。该调整不改变 `java32` 的 API 19 或 ABI 配置。
+
+## 手机投屏能力
+
+电视预装 `com.konka.kkmultiscreen`（康佳多屏互动），其启动 Activity 为 `com.konka.kkmultiscreen/.KKMutiScreenTvActivity`，已于 2026-10-31 通过 ADB 启动确认。该包还包含康佳本地媒体分享播放器和 `com.hpplay.sdk.sink` 接收端组件。
+
+系统 `WifiDisplayStatus` 显示 `featureState=2`、`wfdType=1`，说明存在 Wi-Fi Display / Miracast 能力；但当前 `wifi_display_on=0`，即无线显示尚未启用。启用前应通过电视设置或“多屏互动”界面确认，不要通过 ADB 强行修改该开关，以免 Wi-Fi Direct 切换影响当前网络连接。
+
+### 建议使用方式
+
+1. 电视打开“多屏互动”，手机与电视连接到同一局域网。
+2. Android 手机在控制中心或“设置 → 连接与共享”中打开“投屏 / 无线显示 / Smart View”，选择电视显示的设备名称；这适合完整镜像手机画面。
+3. iPhone/iPad 可先在“多屏互动”页面确认是否显示 AirPlay 接收名称，再从控制中心的“屏幕镜像”选择该名称；`hpplay` 组件表明系统具备相关接收能力，但尚未在本机用 iOS 设备实测。
+4. 只投送某个应用内的视频时，优先使用该手机应用的“投屏”按钮（DLNA）；相比完整屏幕镜像，延迟和耗电通常更低。
+
+### 易互动手机端 APK 分析
+
+电视二维码对应的下载包为 `http://tv.kkapp.com/iwonka/android/app/10001/MultiScreen.apk`。2026-10-31 下载的包 SHA-256 为 `f42ee594169b612df9c50ac082774842db02276b5a3f803a74061b4a079c3c64`，包名 `com.konka.MultiScreen`，版本 `7.7.94233`，`minSdkVersion=21`；它是手机端应用，不能安装到本机 API 19 电视。
+
+该 APK 集成乐播/HPPlay SDK，不是通过 Android Miracast 发送画面：它使用 DLNA、JmDNS/mDNS 等局域网发现机制定位接收端，再经 `MediaProjection` 获取用户授权的屏幕画面，由 `ScreenCastService` 在前台服务中编码并通过 HPPlay 的镜像通道发送到电视。APK 内含 `libhpplayae`、实时传输和 FFmpeg/IJK 相关库。电视端日志中的 `com.hpplay.sdk.sink` 与这一发送端相匹配。
+
+镜像服务在手机任务被移除时会主动停止，因此手机端不要划掉易互动任务；同时应允许其后台运行并关闭电池优化。该包请求联系人、位置、设备状态、录音、相机、存储和网络等较宽权限，且允许明文网络流量；只应从康佳提供的下载地址安装并按实际功能授权。
+
+### 自建局域网投屏原型
+
+为避免依赖 HPPlay 私有协议，项目新增一套独立的局域网投屏实现：
+
+| 组件 | 模块 / 包名 | 系统要求 | 职责 |
+|---|---|---|---|
+| 电视接收端 | `cast-receiver` / `com.peng.cast.receiver` | Android 4.4.4（API 19）及以上 | TCP 接收 H.264 并用系统 `MediaCodec` 解码到电视画面 |
+| 手机发送端 | `cast-sender` / `com.peng.cast.sender` | Android 5.0（API 21）及以上 | 经用户授权的 `MediaProjection` 捕获屏幕，硬编码 H.264 并发送 |
+| 共用协议 | `cast-protocol` | Java | 定义封包、视频配置及帧格式 |
+
+首版仅传输画面，不采集或发送系统音频。手机和电视必须处于同一可信局域网；协议当前未提供配对、加密、自动发现、断线重连、方向变化重协商或码率自适应。
+
+电视端监听 TCP `48999`，包头 magic 为 `0x50434153`、协议版本为 `1`。发送端先发送包含宽高、SPS（`csd-0`）与 PPS（`csd-1`）的配置包，再发送带展示时间戳和 `MediaCodec` flags 的 H.264 访问单元。视频最长边限制为 1280、30 fps、3 Mbps、关键帧间隔 1 秒，以优先低延迟和 API 19 硬解兼容性。
+
+2026-10-31 已在本机重新构建两个 debug APK，并将接收端安装到康佳电视。`com.peng.cast.receiver/.ReceiverActivity` 可正常前台运行，界面显示有线网络地址 `192.168.31.239:48999`；从局域网主机对该端口的 TCP 连接成功。接收端会枚举所有本机 IPv4 地址，因此有线联网时不会错误提示“未连接 Wi-Fi”。
+
+手机端已在华为 `ALN-AL00`（OpenHarmony 7.0.0.105）通过卓易通安装并运行。HDC 的 `install` 只接受 HAP，不能直接导入 APK；可将 APK 传至手机“我的手机”根目录，再在系统文件管理中打开，由卓易通完成依赖检查和安装。发送端已获得系统屏幕录制授权，并成功将手机画面显示到康佳电视。
+
+首次使用手机原始竖屏 `592x1280` H.264 流时，康佳 API 19 的 HiSilicon 解码器返回 `omx error 0x90000002`。发送端现强制使用 AVC Baseline、Level 3.1，并将竖屏源编码到标准 `1280x720` 画布；接收端将 SPS/PPS 合并为单一 `csd-0` 配置以兼容旧硬解。实机确认该配置可持续显示手机画面。当前发送端 debug APK 的 SHA-256 为 `7d393fdca2ecb85fa79c5afb7ca3a45266cba3f81cf30ba0148fdd9de33fff76`。
+
+**后台与全屏验证（未通过）**：发送端投屏后按 Home 离开 `PENG投屏`，再启动横屏全屏的 `PENG电视`。手机可进入该应用的“正在加载...”全屏界面，但电视接收端记录 `SocketException: ECONNRESET`，说明发送端连接已经关闭。随后使用手机的“红果免费短剧”播放《全民沙漠求生：从一瓶水开始》第 1 集，手机端视频可正常持续播放；但因离开 `PENG投屏` 时会话已断开，电视无法接收该视频画面。当前卓易通环境下尚不能确认后台投屏持续可用，也未能验证真实视频播放或全屏视频画面；`PENG电视` 本次未完成内容加载。须先定位 MediaProjection/前台服务为何在切换应用后被卓易通停止，再重测普通视频和受 DRM 保护视频（后者可能因系统安全限制显示黑屏）。
+
+发送端 `0.1.1`（SHA-256：`c493d6b0d061a5301d82468c334247ab2b14af1d0d3b756e27f5571a1d2c7e66`）已在华为手机的卓易通更新安装。此版本显式以 `mediaProjection` 类型提升前台服务、任务移除时不停止服务，并在投屏期间持有部分唤醒锁。更新后的后台保活仍待实测：本次重新发起授权时，红果遗留的悬浮播放层覆盖系统录屏授权界面，无法完成授权交互。
+
+发送端 `0.1.2`（SHA-256：`23b662bccefae309f4f18f142e71ccc5290878c1aa4d944ccb401c13d0a85997`）修复 Android 12+ 创建通知 `PendingIntent` 必须指定可变性标志的崩溃。在本机 Android 12（API 32）虚拟设备上，授权投屏后电视接收端成功收到 H.264 配置与首帧；随后切换到系统设置页，发送端仍为前台服务、`MediaProjection` 仍处于 `TYPE_SCREEN_CAPTURE`，电视端 TCP 连接保持 `ESTABLISHED`。结论：在标准 Android 上，发送端可以在切换到其他应用后继续投屏。另一个 Android 7.0（API 24）虚拟设备因系统 `OMX.google.h264.encoder` 进程段错误而停止编码，此为该旧模拟器系统编码器缺陷，不能用于验证服务生命周期。
+
+**视频播放器验证**：在同一 Android 12 虚拟设备安装开源 `mpv-android`（arm64 官方 Release），并使用本机生成的 20 秒非受保护 MP4 测试片段播放。mpv 日志确认首个视频帧已显示、GPU 视频渲染已启用，并以 `finished playback, success` 正常结束。播放过程中发送端仍为前台服务、`MediaProjection` 仍有效，康佳接收端 TCP 会话保持 `ESTABLISHED`，接收端未记录解码或连接错误。因此，标准 Android 上的普通本地视频播放可持续镜像到电视。此结论不适用于 DRM 或 `FLAG_SECURE` 内容；首版仍不传输系统音频。
+
 ## 已知问题、原因与处理方式
 
 ### 1. 首页启动时 API 19 资源崩溃
@@ -204,6 +265,24 @@ API 19 的 OkHttp DNS 解析现在优先返回 IPv4 地址；若 DoH 查询失�
 **已验证**
 
 API 24 手机模拟器与 API 31 TV 模拟器可以启动。手机模拟器不等同于电视的 API 19/32 位 native 验证环境。
+
+### 8. 易互动镜像会话被系统无操作超时停止
+
+**现象**
+
+手机通过易互动镜像到电视后会自行断开。
+
+**日志证据**
+
+2026-10-31 的电视日志表明，`com.hpplay.sdk.sink.business.BusinessActivity` 的镜像会话结束前，系统先发出 `konka.action.NO_OPERATION_TIMEOUT`。随后接收端依次进入 `onStop()`、`stopBusiness`、`PlayController.stopCast()` 和 `onDestroy()`，并返回康佳多屏互动主界面。日志中没有先于该广播的 Wi-Fi Display 链路断开记录。
+
+**原因**
+
+康佳系统的独立“无操作超时/屏保”机制仍在运行；它不受 `screen_off_timeout=2147483647`（永不熄屏）控制。多屏互动接收 Activity 未持有阻止该机制的唤醒状态，因此会被系统停止。
+
+**建议处理**
+
+优先在电视设置中关闭或延长“屏保 / 无操作超时 / 自动待机”。如设置界面没有入口，可在用户确认后将系统 `screensaver_enabled` 设为 `0` 并重新测试；此修改会关闭系统屏保，应由用户决定是否启用。手机端还应将易互动加入电池优化白名单，并避免切换 Wi-Fi、VPN 或移动热点。
 
 ## 推荐安装与日志采集
 

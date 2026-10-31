@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">PENG投屏</string>
+    <string name="notification_channel">PENG投屏</string>
+    <string name="notification_title">正在投屏</string>
+</resources>

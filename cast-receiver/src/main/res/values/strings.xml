@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">PENG投屏接收器</string>
+    <string name="notification_title">PENG投屏接收器正在等待连接</string>
+</resources>

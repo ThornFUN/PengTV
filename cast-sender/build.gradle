@@ -1,0 +1,28 @@
+plugins {
+    id "com.android.application"
+}
+
+def appConfig = rootProject.ext.pengTv.apps.castSender
+
+android {
+    namespace "com.peng.cast.sender"
+    compileSdk rootProject.ext.pengTv.compileSdk
+
+    defaultConfig {
+        applicationId appConfig.applicationId
+        minSdk appConfig.minSdk
+        targetSdk appConfig.targetSdk
+        versionCode appConfig.versionCode
+        versionName appConfig.versionName
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    implementation project(":cast-protocol")
+    implementation "androidx.core:core:1.9.0"
+}
