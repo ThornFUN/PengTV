@@ -36,6 +36,7 @@ public final class ReceiverService extends Service {
     private AudioTrack audioTrack;
     private boolean firstFrameLogged;
     private boolean firstFrameRendered;
+    private boolean firstAudioFrameRendered;
     private volatile ReceiverListener receiverListener;
 
     public interface ReceiverListener {
@@ -252,6 +253,7 @@ public final class ReceiverService extends Service {
 
     private void configureAudioDecoder(CastProtocol.AudioConfig config) throws IOException {
         releaseAudioDecoder();
+        firstAudioFrameRendered = false;
         try {
             MediaFormat format = MediaFormat.createAudioFormat("audio/mp4a-latm",
                     config.sampleRate, config.channelCount);
@@ -313,7 +315,13 @@ public final class ReceiverService extends Service {
                         decoded.limit(bufferInfo.offset + bufferInfo.size);
                         byte[] pcm = new byte[bufferInfo.size];
                         decoded.get(pcm);
-                        activeTrack.write(pcm, 0, pcm.length);
+                        int bytesWritten = activeTrack.write(pcm, 0, pcm.length);
+                        if (!firstAudioFrameRendered) {
+                            firstAudioFrameRendered = true;
+                            Log.i(TAG, "First AAC audio output: decoded=" + pcm.length
+                                    + ", written=" + bytesWritten
+                                    + ", playState=" + activeTrack.getPlayState());
+                        }
                     }
                 } finally {
                     activeDecoder.releaseOutputBuffer(outputIndex, false);
