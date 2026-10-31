@@ -18,6 +18,7 @@ import android.media.AudioRecord;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
+import android.media.MediaRecorder;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
@@ -47,11 +48,11 @@ public final class SenderService extends Service {
     public static final String EXTRA_HOST = "host";
     public static final String EXTRA_RESULT_CODE = "result_code";
     public static final String EXTRA_PROJECTION_DATA = "projection_data";
+    public static final String EXTRA_CAPTURE_MICROPHONE = "capture_microphone";
 
     private static final String CHANNEL_ID = "cast";
     private static final int NOTIFICATION_ID = 10;
     private static final int AUDIO_SAMPLE_RATE = 48_000;
-    private static final int AUDIO_CHANNEL_COUNT = 2;
 
     private volatile boolean streaming;
     private volatile boolean audioStreaming;
@@ -81,11 +82,12 @@ public final class SenderService extends Service {
         String host = intent.getStringExtra(EXTRA_HOST);
         int resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, 0);
         Intent projectionData = intent.getParcelableExtra(EXTRA_PROJECTION_DATA);
+        boolean captureMicrophone = intent.getBooleanExtra(EXTRA_CAPTURE_MICROPHONE, false);
         if (host == null || host.trim().isEmpty() || projectionData == null) {
             stopSelf(startId);
             return START_NOT_STICKY;
         }
-        startStreaming(host.trim(), resultCode, projectionData);
+        startStreaming(host.trim(), resultCode, projectionData, captureMicrophone);
         return START_NOT_STICKY;
     }
 
@@ -109,18 +111,20 @@ public final class SenderService extends Service {
         return null;
     }
 
-    private void startStreaming(final String host, final int resultCode, final Intent projectionData) {
+    private void startStreaming(final String host, final int resultCode, final Intent projectionData,
+            final boolean captureMicrophone) {
         streaming = true;
         streamThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                stream(host, resultCode, projectionData);
+                stream(host, resultCode, projectionData, captureMicrophone);
             }
         }, "cast-sender");
         streamThread.start();
     }
 
-    private void stream(String host, int resultCode, Intent projectionData) {
+    private void stream(String host, int resultCode, Intent projectionData,
+            boolean captureMicrophone) {
         try {
             acquireWakeLock();
             MediaProjectionManager manager = (MediaProjectionManager)
@@ -135,7 +139,7 @@ public final class SenderService extends Service {
 
             connect(host);
             startEncoder();
-            startAudioCaptureIfAvailable();
+            startAudioCaptureIfAvailable(captureMicrophone);
             drainEncoder();
         } catch (IOException | RuntimeException exception) {
             Log.e(TAG, "Screen cast session failed", exception);
@@ -224,10 +228,16 @@ public final class SenderService extends Service {
                 CastProtocol.encodeVideoConfig(config));
     }
 
-    private void startAudioCaptureIfAvailable() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
-                || checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
-                != PackageManager.PERMISSION_GRANTED) {
+    private void startAudioCaptureIfAvailable(boolean captureMicrophone) {
+        if (captureMicrophone) {
+            startMicrophoneAudioCapture();
+        } else {
+            startPlaybackAudioCapture();
+        }
+    }
+
+    private void startPlaybackAudioCapture() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || !hasRecordAudioPermission()) {
             Log.i(TAG, "Application audio capture is unavailable on this device or permission was denied");
             return;
         }
@@ -247,32 +257,64 @@ public final class SenderService extends Service {
                             .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
                             .addMatchingUsage(AudioAttributes.USAGE_GAME)
                             .build();
-            audioRecord = new AudioRecord.Builder()
+            AudioRecord record = new AudioRecord.Builder()
                     .setAudioFormat(audioFormat)
                     .setBufferSizeInBytes(minimumBufferSize * 2)
                     .setAudioPlaybackCaptureConfig(captureConfig)
                     .build();
-            MediaFormat encoderFormat = MediaFormat.createAudioFormat("audio/mp4a-latm",
-                    AUDIO_SAMPLE_RATE, AUDIO_CHANNEL_COUNT);
-            encoderFormat.setInteger(MediaFormat.KEY_AAC_PROFILE,
-                    MediaCodecInfo.CodecProfileLevel.AACObjectLC);
-            encoderFormat.setInteger(MediaFormat.KEY_BIT_RATE, 128_000);
-            audioEncoder = MediaCodec.createEncoderByType("audio/mp4a-latm");
-            audioEncoder.configure(encoderFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
-            audioEncoder.start();
-            audioRecord.startRecording();
-            audioStreaming = true;
-            audioThread = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    captureAudio();
-                }
-            }, "cast-audio");
-            audioThread.start();
+            startAudioEncoder(record, 2);
         } catch (IOException | RuntimeException exception) {
             Log.w(TAG, "Unable to capture application audio; continuing with video only", exception);
             releaseAudioResources();
         }
+    }
+
+    private void startMicrophoneAudioCapture() {
+        if (!hasRecordAudioPermission()) {
+            Log.i(TAG, "Microphone capture permission was denied");
+            return;
+        }
+        try {
+            int minimumBufferSize = AudioRecord.getMinBufferSize(AUDIO_SAMPLE_RATE,
+                    AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
+            if (minimumBufferSize <= 0) {
+                throw new IllegalStateException("Unsupported microphone audio format");
+            }
+            AudioRecord record = new AudioRecord(MediaRecorder.AudioSource.MIC, AUDIO_SAMPLE_RATE,
+                    AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT,
+                    minimumBufferSize * 2);
+            startAudioEncoder(record, 1);
+        } catch (IOException | RuntimeException exception) {
+            Log.w(TAG, "Unable to capture microphone audio; continuing with video only", exception);
+            releaseAudioResources();
+        }
+    }
+
+    private void startAudioEncoder(AudioRecord record, int channelCount) throws IOException {
+        audioRecord = record;
+        MediaFormat encoderFormat = MediaFormat.createAudioFormat("audio/mp4a-latm",
+                AUDIO_SAMPLE_RATE, channelCount);
+        encoderFormat.setInteger(MediaFormat.KEY_AAC_PROFILE,
+                MediaCodecInfo.CodecProfileLevel.AACObjectLC);
+        encoderFormat.setInteger(MediaFormat.KEY_BIT_RATE, 128_000);
+        audioEncoder = MediaCodec.createEncoderByType("audio/mp4a-latm");
+        audioEncoder.configure(encoderFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+        audioEncoder.start();
+        audioRecord.startRecording();
+        audioStreaming = true;
+        audioThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                captureAudio();
+            }
+        }, "cast-audio");
+        audioThread.start();
+    }
+
+    private boolean hasRecordAudioPermission() {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.M
+                || checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
+                == PackageManager.PERMISSION_GRANTED;
     }
 
     private void captureAudio() {

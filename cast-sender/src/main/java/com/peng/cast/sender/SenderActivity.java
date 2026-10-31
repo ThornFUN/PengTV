@@ -16,6 +16,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
+import android.widget.CheckBox;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -30,9 +31,11 @@ public final class SenderActivity extends Activity {
     private static final String PREFERENCES_NAME = "cast";
     private static final String RECEIVER_HISTORY_KEY = "receiver_history";
     private static final String LEGACY_RECEIVER_HOST_KEY = "receiver_host";
+    private static final String MICROPHONE_CAPTURE_KEY = "microphone_capture";
 
     private AutoCompleteTextView receiverAddress;
     private ArrayAdapter<String> receiverAddressAdapter;
+    private CheckBox microphoneCapture;
     private TextView statusView;
 
     private final BroadcastReceiver sessionErrorReceiver = new BroadcastReceiver() {
@@ -53,7 +56,7 @@ public final class SenderActivity extends Activity {
 
         TextView instructions = new TextView(this);
         instructions.setText("在电视打开 PENG投屏接收器，输入电视显示的 IP 地址后开始投屏。"
-                + "\n\nAndroid 10 及以上会同时投送允许采集的应用声音。");
+                + "\n\n开启卓易通兼容模式时，手机会通过麦克风采集外放声音。");
         instructions.setTextSize(18);
         root.addView(instructions, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -80,6 +83,13 @@ public final class SenderActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         addressParams.topMargin = dp(24);
         root.addView(receiverAddress, addressParams);
+
+        microphoneCapture = new CheckBox(this);
+        microphoneCapture.setText("卓易通兼容：通过麦克风采集声音");
+        microphoneCapture.setChecked(getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
+                .getBoolean(MICROPHONE_CAPTURE_KEY, true));
+        root.addView(microphoneCapture, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         Button startButton = new Button(this);
         startButton.setText("开始投屏");
@@ -140,7 +150,12 @@ public final class SenderActivity extends Activity {
             return;
         }
         rememberReceiverHost(host);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+        getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE).edit()
+                .putBoolean(MICROPHONE_CAPTURE_KEY, microphoneCapture.isChecked())
+                .apply();
+        boolean needsAudioPermission = microphoneCapture.isChecked()
+                || Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q;
+        if (needsAudioPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
                 && checkSelfPermission(Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_RECORD_AUDIO);
@@ -178,7 +193,8 @@ public final class SenderActivity extends Activity {
         Intent serviceIntent = new Intent(this, SenderService.class)
                 .putExtra(SenderService.EXTRA_HOST, receiverAddress.getText().toString().trim())
                 .putExtra(SenderService.EXTRA_RESULT_CODE, resultCode)
-                .putExtra(SenderService.EXTRA_PROJECTION_DATA, data);
+                .putExtra(SenderService.EXTRA_PROJECTION_DATA, data)
+                .putExtra(SenderService.EXTRA_CAPTURE_MICROPHONE, microphoneCapture.isChecked());
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(serviceIntent);
         } else {
