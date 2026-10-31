@@ -7,9 +7,14 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
+import android.media.AudioAttributes;
+import android.media.AudioFormat;
+import android.media.AudioPlaybackCaptureConfiguration;
+import android.media.AudioRecord;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
@@ -44,12 +49,19 @@ public final class SenderService extends Service {
 
     private static final String CHANNEL_ID = "cast";
     private static final int NOTIFICATION_ID = 10;
+    private static final int AUDIO_SAMPLE_RATE = 48_000;
+    private static final int AUDIO_CHANNEL_COUNT = 2;
 
     private volatile boolean streaming;
+    private volatile boolean audioStreaming;
+    private final Object outputLock = new Object();
     private Thread streamThread;
+    private Thread audioThread;
     private MediaProjection projection;
     private MediaCodec encoder;
+    private MediaCodec audioEncoder;
     private VirtualDisplay virtualDisplay;
+    private AudioRecord audioRecord;
     private Socket socket;
     private DataOutputStream output;
     private PowerManager.WakeLock wakeLock;
@@ -117,6 +129,7 @@ public final class SenderService extends Service {
 
             connect(host);
             startEncoder();
+            startAudioCaptureIfAvailable();
             drainEncoder();
         } catch (IOException | RuntimeException exception) {
             Log.e(TAG, "Screen cast session failed", exception);
@@ -180,9 +193,8 @@ public final class SenderService extends Service {
                         encoded.limit(bufferInfo.offset + bufferInfo.size);
                         byte[] payload = new byte[bufferInfo.size];
                         encoded.get(payload);
-                        CastProtocol.writePacket(output, CastProtocol.TYPE_FRAME,
+                        writePacket(CastProtocol.TYPE_FRAME,
                                 bufferInfo.presentationTimeUs, bufferInfo.flags, payload);
-                        output.flush();
                     }
                 } finally {
                     encoder.releaseOutputBuffer(outputIndex, false);
@@ -202,9 +214,144 @@ public final class SenderService extends Service {
                 format.getInteger(MediaFormat.KEY_HEIGHT),
                 copyBuffer(csd0),
                 copyBuffer(csd1));
-        CastProtocol.writePacket(output, CastProtocol.TYPE_CONFIG, 0, 0,
+        writePacket(CastProtocol.TYPE_CONFIG, 0, 0,
                 CastProtocol.encodeVideoConfig(config));
-        output.flush();
+    }
+
+    private void startAudioCaptureIfAvailable() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
+                || checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+            Log.i(TAG, "Application audio capture is unavailable on this device or permission was denied");
+            return;
+        }
+        try {
+            AudioFormat audioFormat = new AudioFormat.Builder()
+                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                    .setSampleRate(AUDIO_SAMPLE_RATE)
+                    .setChannelMask(AudioFormat.CHANNEL_IN_STEREO)
+                    .build();
+            int minimumBufferSize = AudioRecord.getMinBufferSize(AUDIO_SAMPLE_RATE,
+                    AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT);
+            if (minimumBufferSize <= 0) {
+                throw new IllegalStateException("Unsupported playback audio format");
+            }
+            AudioPlaybackCaptureConfiguration captureConfig =
+                    new AudioPlaybackCaptureConfiguration.Builder(projection)
+                            .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
+                            .addMatchingUsage(AudioAttributes.USAGE_GAME)
+                            .build();
+            audioRecord = new AudioRecord.Builder()
+                    .setAudioFormat(audioFormat)
+                    .setBufferSizeInBytes(minimumBufferSize * 2)
+                    .setAudioPlaybackCaptureConfig(captureConfig)
+                    .build();
+            MediaFormat encoderFormat = MediaFormat.createAudioFormat("audio/mp4a-latm",
+                    AUDIO_SAMPLE_RATE, AUDIO_CHANNEL_COUNT);
+            encoderFormat.setInteger(MediaFormat.KEY_AAC_PROFILE,
+                    MediaCodecInfo.CodecProfileLevel.AACObjectLC);
+            encoderFormat.setInteger(MediaFormat.KEY_BIT_RATE, 128_000);
+            audioEncoder = MediaCodec.createEncoderByType("audio/mp4a-latm");
+            audioEncoder.configure(encoderFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+            audioEncoder.start();
+            audioRecord.startRecording();
+            audioStreaming = true;
+            audioThread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    captureAudio();
+                }
+            }, "cast-audio");
+            audioThread.start();
+        } catch (IOException | RuntimeException exception) {
+            Log.w(TAG, "Unable to capture application audio; continuing with video only", exception);
+            releaseAudioResources();
+        }
+    }
+
+    private void captureAudio() {
+        byte[] pcm = new byte[4_096];
+        MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+        ByteBuffer[] outputBuffers = audioEncoder.getOutputBuffers();
+        try {
+            while (streaming && audioStreaming) {
+                int inputIndex = audioEncoder.dequeueInputBuffer(10_000);
+                if (inputIndex < 0) {
+                    outputBuffers = drainAudioEncoder(bufferInfo, outputBuffers);
+                    continue;
+                }
+                int byteCount = audioRecord.read(pcm, 0, pcm.length);
+                if (byteCount <= 0) {
+                    continue;
+                }
+                ByteBuffer inputBuffer = audioEncoder.getInputBuffers()[inputIndex];
+                inputBuffer.clear();
+                inputBuffer.put(pcm, 0, byteCount);
+                audioEncoder.queueInputBuffer(inputIndex, 0, byteCount,
+                        System.nanoTime() / 1_000L, 0);
+                outputBuffers = drainAudioEncoder(bufferInfo, outputBuffers);
+            }
+        } catch (RuntimeException | IOException exception) {
+            if (streaming && audioStreaming) {
+                Log.w(TAG, "Application audio capture stopped; continuing with video only", exception);
+            }
+        } finally {
+            audioStreaming = false;
+            releaseAudioResources();
+        }
+    }
+
+    private ByteBuffer[] drainAudioEncoder(MediaCodec.BufferInfo bufferInfo,
+            ByteBuffer[] outputBuffers) throws IOException {
+        while (true) {
+            int outputIndex = audioEncoder.dequeueOutputBuffer(bufferInfo, 0);
+            if (outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                sendAudioConfig(audioEncoder.getOutputFormat());
+            } else if (outputIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
+                outputBuffers = audioEncoder.getOutputBuffers();
+            } else if (outputIndex >= 0) {
+                try {
+                    if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0
+                            && bufferInfo.size > 0) {
+                        ByteBuffer encoded = outputBuffers[outputIndex].duplicate();
+                        encoded.position(bufferInfo.offset);
+                        encoded.limit(bufferInfo.offset + bufferInfo.size);
+                        byte[] payload = new byte[bufferInfo.size];
+                        encoded.get(payload);
+                        writePacket(CastProtocol.TYPE_AUDIO_FRAME,
+                                bufferInfo.presentationTimeUs, bufferInfo.flags, payload);
+                    }
+                } finally {
+                    audioEncoder.releaseOutputBuffer(outputIndex, false);
+                }
+            } else {
+                return outputBuffers;
+            }
+        }
+    }
+
+    private void sendAudioConfig(MediaFormat format) throws IOException {
+        ByteBuffer csd0 = format.getByteBuffer("csd-0");
+        if (csd0 == null) {
+            throw new IOException("AAC encoder did not provide codec configuration");
+        }
+        CastProtocol.AudioConfig config = new CastProtocol.AudioConfig(
+                format.getInteger(MediaFormat.KEY_SAMPLE_RATE),
+                format.getInteger(MediaFormat.KEY_CHANNEL_COUNT),
+                copyBuffer(csd0));
+        writePacket(CastProtocol.TYPE_AUDIO_CONFIG, 0, 0,
+                CastProtocol.encodeAudioConfig(config));
+    }
+
+    private void writePacket(byte type, long presentationTimeUs, int flags, byte[] payload)
+            throws IOException {
+        synchronized (outputLock) {
+            if (output == null) {
+                throw new IOException("Cast connection is closed");
+            }
+            CastProtocol.writePacket(output, type, presentationTimeUs, flags, payload);
+            output.flush();
+        }
     }
 
     private static byte[] copyBuffer(ByteBuffer source) {
@@ -241,15 +388,17 @@ public final class SenderService extends Service {
             return;
         }
         streaming = false;
-        DataOutputStream activeOutput = output;
-        if (activeOutput != null) {
+        stopAudioCapture();
+        synchronized (outputLock) {
             try {
-                CastProtocol.writePacket(activeOutput, CastProtocol.TYPE_END, 0, 0, new byte[0]);
-                activeOutput.flush();
+                if (output != null) {
+                    CastProtocol.writePacket(output, CastProtocol.TYPE_END, 0, 0, new byte[0]);
+                    output.flush();
+                }
             } catch (IOException ignored) {
             }
+            output = null;
         }
-        output = null;
         closeSocket();
         releaseVirtualDisplay();
         releaseEncoder();
@@ -291,6 +440,54 @@ public final class SenderService extends Service {
         }
     }
 
+    private void stopAudioCapture() {
+        audioStreaming = false;
+        AudioRecord activeRecord = audioRecord;
+        if (activeRecord != null) {
+            try {
+                activeRecord.stop();
+            } catch (IllegalStateException ignored) {
+            }
+        }
+        Thread activeThread = audioThread;
+        if (activeThread != null && activeThread != Thread.currentThread()) {
+            activeThread.interrupt();
+            try {
+                activeThread.join(500);
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        if (activeThread == null || !activeThread.isAlive()) {
+            releaseAudioResources();
+        }
+    }
+
+    private void releaseAudioResources() {
+        AudioRecord activeRecord = audioRecord;
+        audioRecord = null;
+        if (activeRecord != null) {
+            try {
+                activeRecord.stop();
+            } catch (IllegalStateException ignored) {
+            }
+            activeRecord.release();
+        }
+        MediaCodec activeEncoder = audioEncoder;
+        audioEncoder = null;
+        if (activeEncoder != null) {
+            try {
+                activeEncoder.stop();
+            } catch (Exception ignored) {
+            }
+            try {
+                activeEncoder.release();
+            } catch (Exception ignored) {
+            }
+        }
+        audioThread = null;
+    }
+
     private void releaseProjection() {
         MediaProjection activeProjection = projection;
         projection = null;
@@ -302,8 +499,13 @@ public final class SenderService extends Service {
     private void promoteToForeground() {
         Notification notification = buildNotification();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            int serviceTypes = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION;
+            if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
+                    == PackageManager.PERMISSION_GRANTED) {
+                serviceTypes |= ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE;
+            }
             startForeground(NOTIFICATION_ID, notification,
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
+                    serviceTypes);
         } else {
             startForeground(NOTIFICATION_ID, notification);
         }

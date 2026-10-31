@@ -1,6 +1,8 @@
 package com.peng.cast.sender;
 
 import android.app.Activity;
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -19,6 +21,7 @@ import android.widget.Toast;
 
 public final class SenderActivity extends Activity {
     private static final int REQUEST_CAPTURE = 100;
+    private static final int REQUEST_RECORD_AUDIO = 101;
     private EditText receiverAddress;
     private TextView statusView;
 
@@ -40,7 +43,7 @@ public final class SenderActivity extends Activity {
 
         TextView instructions = new TextView(this);
         instructions.setText("在电视打开 PENG投屏接收器，输入电视显示的 IP 地址后开始投屏。"
-                + "\n\n首版仅传输画面，不传输声音。");
+                + "\n\nAndroid 10 及以上会同时投送允许采集的应用声音。");
         instructions.setTextSize(18);
         root.addView(instructions, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -59,7 +62,7 @@ public final class SenderActivity extends Activity {
         startButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                requestProjection();
+                requestProjectionWithAudioPermission();
             }
         });
         LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(
@@ -93,13 +96,37 @@ public final class SenderActivity extends Activity {
         super.onStop();
     }
 
-    private void requestProjection() {
+    private void requestProjectionWithAudioPermission() {
         String host = receiverAddress.getText().toString().trim();
         if (host.isEmpty()) {
             receiverAddress.setError("请输入电视 IP 地址");
             return;
         }
         getSharedPreferences("cast", MODE_PRIVATE).edit().putString("receiver_host", host).apply();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                && checkSelfPermission(Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_RECORD_AUDIO);
+            return;
+        }
+        requestProjection();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != REQUEST_RECORD_AUDIO) {
+            return;
+        }
+        if (grantResults.length == 0
+                || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(this, "未授予录音权限，将只投送画面", Toast.LENGTH_LONG).show();
+        }
+        requestProjection();
+    }
+
+    private void requestProjection() {
         MediaProjectionManager manager = (MediaProjectionManager)
                 getSystemService(Context.MEDIA_PROJECTION_SERVICE);
         startActivityForResult(manager.createScreenCaptureIntent(), REQUEST_CAPTURE);

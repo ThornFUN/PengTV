@@ -4,6 +4,9 @@ import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.media.AudioFormat;
+import android.media.AudioManager;
+import android.media.AudioTrack;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.os.Binder;
@@ -29,6 +32,8 @@ public final class ReceiverService extends Service {
     private Thread serverThread;
     private ServerSocket serverSocket;
     private MediaCodec decoder;
+    private MediaCodec audioDecoder;
+    private AudioTrack audioTrack;
     private boolean firstFrameLogged;
     private boolean firstFrameRendered;
     private volatile ReceiverListener receiverListener;
@@ -107,6 +112,7 @@ public final class ReceiverService extends Service {
         running = false;
         closeServerSocket();
         releaseDecoder();
+        releaseAudioDecoder();
     }
 
     private void acceptConnections() {
@@ -137,6 +143,10 @@ public final class ReceiverService extends Service {
                     configureDecoder(CastProtocol.decodeVideoConfig(packet.payload));
                 } else if (packet.type == CastProtocol.TYPE_FRAME) {
                     queueFrame(packet);
+                } else if (packet.type == CastProtocol.TYPE_AUDIO_CONFIG) {
+                    configureAudioDecoder(CastProtocol.decodeAudioConfig(packet.payload));
+                } else if (packet.type == CastProtocol.TYPE_AUDIO_FRAME) {
+                    queueAudio(packet);
                 } else if (packet.type == CastProtocol.TYPE_END) {
                     break;
                 }
@@ -149,6 +159,7 @@ public final class ReceiverService extends Service {
             } catch (IOException ignored) {
             }
             releaseDecoder();
+            releaseAudioDecoder();
             notifySenderDisconnected();
         }
     }
@@ -227,6 +238,110 @@ public final class ReceiverService extends Service {
     private void releaseDecoder() {
         MediaCodec activeDecoder = decoder;
         decoder = null;
+        if (activeDecoder != null) {
+            try {
+                activeDecoder.stop();
+            } catch (Exception ignored) {
+            }
+            try {
+                activeDecoder.release();
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    private void configureAudioDecoder(CastProtocol.AudioConfig config) throws IOException {
+        releaseAudioDecoder();
+        try {
+            MediaFormat format = MediaFormat.createAudioFormat("audio/mp4a-latm",
+                    config.sampleRate, config.channelCount);
+            format.setByteBuffer("csd-0", ByteBuffer.wrap(config.csd0));
+            audioDecoder = MediaCodec.createDecoderByType("audio/mp4a-latm");
+            audioDecoder.configure(format, null, null, 0);
+            int channelConfig = config.channelCount == 1
+                    ? AudioFormat.CHANNEL_OUT_MONO : AudioFormat.CHANNEL_OUT_STEREO;
+            int minimumBufferSize = AudioTrack.getMinBufferSize(config.sampleRate, channelConfig,
+                    AudioFormat.ENCODING_PCM_16BIT);
+            if (minimumBufferSize <= 0) {
+                throw new IOException("Unsupported AAC playback format");
+            }
+            audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, config.sampleRate, channelConfig,
+                    AudioFormat.ENCODING_PCM_16BIT, minimumBufferSize * 2,
+                    AudioTrack.MODE_STREAM);
+            audioDecoder.start();
+            audioTrack.play();
+            Log.i(TAG, "Configured AAC audio playback for " + config.sampleRate + " Hz, "
+                    + config.channelCount + " channels");
+        } catch (RuntimeException exception) {
+            releaseAudioDecoder();
+            throw new IOException("Unable to start AAC decoder", exception);
+        }
+    }
+
+    private void queueAudio(CastProtocol.Packet packet) {
+        MediaCodec activeDecoder = audioDecoder;
+        if (activeDecoder == null) {
+            return;
+        }
+        try {
+            int inputIndex = activeDecoder.dequeueInputBuffer(10_000);
+            if (inputIndex >= 0) {
+                ByteBuffer inputBuffer = activeDecoder.getInputBuffers()[inputIndex];
+                inputBuffer.clear();
+                inputBuffer.put(packet.payload);
+                activeDecoder.queueInputBuffer(inputIndex, 0, packet.payload.length,
+                        packet.presentationTimeUs, packet.flags);
+            }
+            drainAudioDecoder(activeDecoder);
+        } catch (RuntimeException exception) {
+            Log.e(TAG, "AAC decoder rejected an audio frame", exception);
+            releaseAudioDecoder();
+        }
+    }
+
+    private void drainAudioDecoder(MediaCodec activeDecoder) {
+        MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+        ByteBuffer[] outputBuffers = activeDecoder.getOutputBuffers();
+        while (true) {
+            int outputIndex = activeDecoder.dequeueOutputBuffer(bufferInfo, 0);
+            if (outputIndex >= 0) {
+                try {
+                    AudioTrack activeTrack = audioTrack;
+                    if (activeTrack != null && bufferInfo.size > 0) {
+                        ByteBuffer decoded = outputBuffers[outputIndex].duplicate();
+                        decoded.position(bufferInfo.offset);
+                        decoded.limit(bufferInfo.offset + bufferInfo.size);
+                        byte[] pcm = new byte[bufferInfo.size];
+                        decoded.get(pcm);
+                        activeTrack.write(pcm, 0, pcm.length);
+                    }
+                } finally {
+                    activeDecoder.releaseOutputBuffer(outputIndex, false);
+                }
+            } else if (outputIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
+                return;
+            } else if (outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                continue;
+            } else if (outputIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
+                outputBuffers = activeDecoder.getOutputBuffers();
+            } else {
+                return;
+            }
+        }
+    }
+
+    private void releaseAudioDecoder() {
+        AudioTrack activeTrack = audioTrack;
+        audioTrack = null;
+        if (activeTrack != null) {
+            try {
+                activeTrack.stop();
+            } catch (IllegalStateException ignored) {
+            }
+            activeTrack.release();
+        }
+        MediaCodec activeDecoder = audioDecoder;
+        audioDecoder = null;
         if (activeDecoder != null) {
             try {
                 activeDecoder.stop();

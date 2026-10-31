@@ -15,6 +15,8 @@ public final class CastProtocol {
     public static final byte TYPE_CONFIG = 1;
     public static final byte TYPE_FRAME = 2;
     public static final byte TYPE_END = 3;
+    public static final byte TYPE_AUDIO_CONFIG = 4;
+    public static final byte TYPE_AUDIO_FRAME = 5;
 
     private CastProtocol() {
     }
@@ -81,6 +83,28 @@ public final class CastProtocol {
         return new VideoConfig(width, height, csd0, csd1);
     }
 
+    public static byte[] encodeAudioConfig(AudioConfig config) throws IOException {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        DataOutputStream output = new DataOutputStream(bytes);
+        output.writeInt(config.sampleRate);
+        output.writeInt(config.channelCount);
+        output.writeInt(config.csd0.length);
+        output.write(config.csd0);
+        output.flush();
+        return bytes.toByteArray();
+    }
+
+    public static AudioConfig decodeAudioConfig(byte[] payload) throws IOException {
+        DataInputStream input = new DataInputStream(new ByteArrayInputStream(payload));
+        int sampleRate = input.readInt();
+        int channelCount = input.readInt();
+        byte[] csd0 = readBuffer(input);
+        if (sampleRate <= 0 || channelCount < 1 || channelCount > 2 || input.available() != 0) {
+            throw new IOException("Invalid audio configuration");
+        }
+        return new AudioConfig(sampleRate, channelCount, csd0);
+    }
+
     private static byte[] readBuffer(DataInputStream input) throws IOException {
         int length = input.readInt();
         if (length <= 0 || length > MAX_PACKET_BYTES) {
@@ -117,6 +141,18 @@ public final class CastProtocol {
             this.height = height;
             this.csd0 = csd0;
             this.csd1 = csd1;
+        }
+    }
+
+    public static final class AudioConfig {
+        public final int sampleRate;
+        public final int channelCount;
+        public final byte[] csd0;
+
+        public AudioConfig(int sampleRate, int channelCount, byte[] csd0) {
+            this.sampleRate = sampleRate;
+            this.channelCount = channelCount;
+            this.csd0 = csd0;
         }
     }
 }
