@@ -28,6 +28,8 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
     private ReceiverService receiverService;
     private boolean bound;
     private TextView statusView;
+    private FrameLayout root;
+    private SurfaceView surfaceView;
 
     private final ServiceConnection connection = new ServiceConnection() {
         @Override
@@ -36,8 +38,7 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
             bound = true;
             receiverService.startReceiver();
             receiverService.setReceiverListener(ReceiverActivity.this);
-            receiverService.setSurface(((SurfaceView) findViewById(R.id.receiver_surface))
-                    .getHolder().getSurface());
+            receiverService.setSurface(surfaceView.getHolder().getSurface());
         }
 
         @Override
@@ -52,8 +53,8 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
         super.onCreate(savedInstanceState);
         getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        FrameLayout root = new FrameLayout(this);
-        SurfaceView surfaceView = new SurfaceView(this);
+        root = new FrameLayout(this);
+        surfaceView = new SurfaceView(this);
         surfaceView.setId(R.id.receiver_surface);
         surfaceView.getHolder().addCallback(this);
         root.addView(surfaceView, new FrameLayout.LayoutParams(
@@ -126,14 +127,48 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
     }
 
     @Override
+    public void onVideoConfigured(final int width, final int height) {
+        surfaceView.post(new Runnable() {
+            @Override
+            public void run() {
+                resizeVideoSurface(width, height);
+            }
+        });
+    }
+
+    @Override
     public void onSenderDisconnected() {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 updateStatus();
                 statusView.setVisibility(View.VISIBLE);
+                resetVideoSurface();
             }
         });
+    }
+
+    private void resizeVideoSurface(int videoWidth, int videoHeight) {
+        int containerWidth = root.getWidth();
+        int containerHeight = root.getHeight();
+        if (containerWidth == 0 || containerHeight == 0 || videoWidth <= 0 || videoHeight <= 0) {
+            return;
+        }
+        float videoAspect = (float) videoWidth / videoHeight;
+        float containerAspect = (float) containerWidth / containerHeight;
+        int width = containerWidth;
+        int height = containerHeight;
+        if (videoAspect > containerAspect) {
+            width = Math.round(containerHeight * videoAspect);
+        } else {
+            height = Math.round(containerWidth / videoAspect);
+        }
+        surfaceView.setLayoutParams(new FrameLayout.LayoutParams(width, height, Gravity.CENTER));
+    }
+
+    private void resetVideoSurface() {
+        surfaceView.setLayoutParams(new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     }
 
     private void updateStatus() {

@@ -45,6 +45,8 @@ public final class ReceiverService extends Service {
     public interface ReceiverListener {
         void onSenderConnected();
 
+        void onVideoConfigured(int width, int height);
+
         void onFirstFrameRendered();
 
         void onSenderDisconnected();
@@ -235,6 +237,7 @@ public final class ReceiverService extends Service {
             decoder = MediaCodec.createDecoderByType("video/avc");
             decoder.configure(format, target, null, 0);
             decoder.start();
+            notifyVideoConfigured(config.width, config.height);
         } catch (RuntimeException exception) {
             releaseDecoder();
             Log.e(TAG, "Unable to start H.264 decoder for " + config.width + "x" + config.height,
@@ -431,6 +434,13 @@ public final class ReceiverService extends Service {
         ReceiverListener listener = receiverListener;
         if (listener != null) {
             listener.onSenderConnected();
+        }
+    }
+
+    private void notifyVideoConfigured(int width, int height) {
+        ReceiverListener listener = receiverListener;
+        if (listener != null) {
+            listener.onVideoConfigured(width, height);
         }
     }
 
