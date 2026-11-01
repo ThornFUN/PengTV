@@ -137,18 +137,21 @@ public final class ReceiverService extends Service {
 
     public void startReceiver() {
         synchronized (lifecycleLock) {
-            if (running) {
-                return;
+            if (!running) {
+                running = true;
             }
-            running = true;
-            serverThread = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    acceptConnections();
-                }
-            }, "cast-receiver");
-            serverThread.start();
-            startVideoDatagramReceiver();
+            if (serverThread == null || !serverThread.isAlive()) {
+                serverThread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        acceptConnections();
+                    }
+                }, "cast-receiver");
+                serverThread.start();
+            }
+            if (videoDatagramThread == null || !videoDatagramThread.isAlive()) {
+                startVideoDatagramReceiver();
+            }
             startDownloadServer();
         }
     }
@@ -224,7 +227,7 @@ public final class ReceiverService extends Service {
     }
 
     private void startDownloadServer() {
-        if (downloadServerThread != null) {
+        if (downloadServerThread != null && downloadServerThread.isAlive()) {
             return;
         }
         downloadServerThread = new Thread(new Runnable() {
@@ -526,7 +529,7 @@ public final class ReceiverService extends Service {
         while (true) {
             int outputIndex = activeDecoder.dequeueOutputBuffer(bufferInfo, 0);
             if (outputIndex >= 0) {
-                if (isVideoFrameDelayed(bufferInfo.presentationTimeUs)) {
+                if (firstFrameRendered && isVideoFrameDelayed(bufferInfo.presentationTimeUs)) {
                     activeDecoder.releaseOutputBuffer(outputIndex, false);
                     discardDelayedVideoFrames(activeDecoder);
                     return;
