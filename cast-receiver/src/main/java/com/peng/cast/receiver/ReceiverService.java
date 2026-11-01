@@ -55,6 +55,8 @@ public final class ReceiverService extends Service {
     private boolean firstFrameLogged;
     private boolean firstFrameRendered;
     private boolean firstAudioFrameRendered;
+    private long latestVideoPresentationTimeUs = Long.MIN_VALUE;
+    private CastProtocol.VideoConfig videoConfig;
     private volatile ReceiverListener receiverListener;
     private final VideoFrameAssembler videoFrameAssembler = new VideoFrameAssembler();
 
@@ -436,6 +438,8 @@ public final class ReceiverService extends Service {
             }
             activeSocket = null;
             videoFrameAssembler.reset();
+            latestVideoPresentationTimeUs = Long.MIN_VALUE;
+            videoConfig = null;
             releaseDecoder();
             releaseAudioDecoder();
             return true;
@@ -466,6 +470,7 @@ public final class ReceiverService extends Service {
                 + ", csd-0=" + describeBytes(config.csd0));
         firstFrameLogged = false;
         firstFrameRendered = false;
+        latestVideoPresentationTimeUs = Long.MIN_VALUE;
         releaseDecoder();
         videoFrameAssembler.reset();
         try {
@@ -474,6 +479,7 @@ public final class ReceiverService extends Service {
             decoder = MediaCodec.createDecoderByType("video/avc");
             decoder.configure(format, target, null, 0);
             decoder.start();
+            videoConfig = config;
             notifyVideoConfigured(config.width, config.height);
         } catch (RuntimeException exception) {
             releaseDecoder();
@@ -493,6 +499,7 @@ public final class ReceiverService extends Service {
             return;
         }
         try {
+            latestVideoPresentationTimeUs = presentationTimeUs;
             if (!firstFrameLogged) {
                 firstFrameLogged = true;
                 Log.i(TAG, "First H.264 frame, flags=" + flags
@@ -519,6 +526,11 @@ public final class ReceiverService extends Service {
         while (true) {
             int outputIndex = activeDecoder.dequeueOutputBuffer(bufferInfo, 0);
             if (outputIndex >= 0) {
+                if (isVideoFrameDelayed(bufferInfo.presentationTimeUs)) {
+                    activeDecoder.releaseOutputBuffer(outputIndex, false);
+                    discardDelayedVideoFrames(activeDecoder);
+                    return;
+                }
                 activeDecoder.releaseOutputBuffer(outputIndex, bufferInfo.size > 0);
                 if (bufferInfo.size > 0 && !firstFrameRendered) {
                     firstFrameRendered = true;
@@ -532,6 +544,26 @@ public final class ReceiverService extends Service {
             } else {
                 return;
             }
+        }
+    }
+
+    private boolean isVideoFrameDelayed(long presentationTimeUs) {
+        return latestVideoPresentationTimeUs - presentationTimeUs > 250_000;
+    }
+
+    private void discardDelayedVideoFrames(MediaCodec activeDecoder) {
+        Log.w(TAG, "Discarding delayed H.264 frames to resume real-time playback");
+        videoFrameAssembler.waitForKeyFrame();
+        CastProtocol.VideoConfig config = videoConfig;
+        if (config == null) {
+            releaseDecoder();
+            return;
+        }
+        try {
+            configureDecoder(config);
+        } catch (IOException exception) {
+            Log.e(TAG, "Unable to reset delayed H.264 decoder", exception);
+            releaseDecoder();
         }
     }
 
