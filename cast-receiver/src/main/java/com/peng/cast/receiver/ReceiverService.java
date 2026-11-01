@@ -121,6 +121,14 @@ public final class ReceiverService extends Service {
         }
     }
 
+    public void clearSurface(Surface destroyedSurface) {
+        synchronized (surfaceLock) {
+            if (surface == destroyedSurface) {
+                surface = null;
+            }
+        }
+    }
+
     public void setReceiverListener(ReceiverListener listener) {
         receiverListener = listener;
     }
@@ -387,7 +395,7 @@ public final class ReceiverService extends Service {
     private boolean waitForSurface() {
         long deadline = System.currentTimeMillis() + SURFACE_WAIT_TIMEOUT_MS;
         synchronized (surfaceLock) {
-            while (running && surface == null) {
+            while (running && (surface == null || !surface.isValid())) {
                 long remaining = deadline - System.currentTimeMillis();
                 if (remaining <= 0) {
                     return false;
@@ -399,7 +407,7 @@ public final class ReceiverService extends Service {
                     return false;
                 }
             }
-            return surface != null;
+            return surface != null && surface.isValid();
         }
     }
 
@@ -447,6 +455,9 @@ public final class ReceiverService extends Service {
     }
 
     private void configureDecoder(CastProtocol.VideoConfig config) throws IOException {
+        if (!waitForSurface()) {
+            throw new IOException("Display surface was not ready");
+        }
         Surface target = surface;
         if (target == null || !target.isValid()) {
             throw new IOException("Display surface is unavailable");

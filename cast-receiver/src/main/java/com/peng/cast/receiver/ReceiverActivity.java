@@ -130,7 +130,7 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
     protected void onDestroy() {
         if (bound) {
             receiverService.setReceiverListener(null);
-            receiverService.setSurface(null);
+            receiverService.clearSurface(surfaceView.getHolder().getSurface());
             unbindService(connection);
         }
         super.onDestroy();
@@ -150,7 +150,7 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
         if (receiverService != null) {
-            receiverService.setSurface(null);
+            receiverService.clearSurface(holder.getSurface());
         }
     }
 
