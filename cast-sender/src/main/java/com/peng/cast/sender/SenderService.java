@@ -48,6 +48,7 @@ import java.nio.ByteBuffer;
 
 public final class SenderService extends Service {
     public static final String ACTION_SESSION_ERROR = "com.peng.cast.sender.SESSION_ERROR";
+    public static final String ACTION_RECONNECTING = "com.peng.cast.sender.RECONNECTING";
     public static final String ACTION_STOP = "com.peng.cast.sender.STOP";
     public static final String EXTRA_ERROR_MESSAGE = "error_message";
 
@@ -60,6 +61,7 @@ public final class SenderService extends Service {
     private static final String CHANNEL_ID = "cast";
     private static final int NOTIFICATION_ID = 10;
     private static final int AUDIO_SAMPLE_RATE = 48_000;
+    private static final long RECONNECT_DELAY_MS = 1_000;
 
     private volatile boolean streaming;
     private volatile boolean audioStreaming;
@@ -92,7 +94,7 @@ public final class SenderService extends Service {
 
         promoteToForeground();
         if (intent == null || streaming) {
-            return START_NOT_STICKY;
+            return START_STICKY;
         }
 
         String host = intent.getStringExtra(EXTRA_HOST);
@@ -104,7 +106,7 @@ public final class SenderService extends Service {
             return START_NOT_STICKY;
         }
         startStreaming(host.trim(), resultCode, projectionData, captureMicrophone);
-        return START_NOT_STICKY;
+        return START_STICKY;
     }
 
     private int[] getCaptureDimensions() {
@@ -192,18 +194,50 @@ public final class SenderService extends Service {
                 }
             }, new Handler(Looper.getMainLooper()));
 
-            connect(host);
             showOverlay();
-            startEncoder();
             registerDisplayListener();
-            startAudioCaptureIfAvailable(captureMicrophone);
-            drainEncoder();
-        } catch (IOException | RuntimeException exception) {
+            while (streaming) {
+                try {
+                    connect(host);
+                    startEncoder();
+                    startAudioCaptureIfAvailable(captureMicrophone);
+                    drainEncoder();
+                } catch (IOException | RuntimeException exception) {
+                    if (!streaming) {
+                        break;
+                    }
+                    Log.w(TAG, "Cast connection lost; reconnecting", exception);
+                    resetConnectionForRetry();
+                    sendBroadcast(new Intent(ACTION_RECONNECTING).setPackage(getPackageName()));
+                    waitBeforeReconnect();
+                }
+            }
+        } catch (RuntimeException exception) {
             Log.e(TAG, "Screen cast session failed", exception);
             sendSessionError(exception.getMessage());
         } finally {
             stopStreaming();
             stopSelf();
+        }
+    }
+
+    private void resetConnectionForRetry() {
+        stopAudioCapture();
+        synchronized (outputLock) {
+            output = null;
+        }
+        closeSocket();
+        releaseVirtualDisplay();
+        releaseEncoder();
+        videoRestartRequested = false;
+    }
+
+    private void waitBeforeReconnect() {
+        try {
+            Thread.sleep(RECONNECT_DELAY_MS);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            stopStreaming();
         }
     }
 
@@ -296,6 +330,9 @@ public final class SenderService extends Service {
     }
 
     private void startAudioCaptureIfAvailable(boolean captureMicrophone) {
+        if (audioThread != null || audioEncoder != null) {
+            return;
+        }
         if (captureMicrophone) {
             startMicrophoneAudioCapture();
         } else {

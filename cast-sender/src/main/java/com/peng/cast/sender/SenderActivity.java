@@ -44,7 +44,12 @@ public final class SenderActivity extends Activity {
     private final BroadcastReceiver sessionErrorReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            statusView.setText("投屏已停止：" + intent.getStringExtra(SenderService.EXTRA_ERROR_MESSAGE));
+            if (SenderService.ACTION_RECONNECTING.equals(intent.getAction())) {
+                statusView.setText("连接已断开，正在重新连接电视…");
+            } else {
+                statusView.setText("投屏已停止："
+                        + intent.getStringExtra(SenderService.EXTRA_ERROR_MESSAGE));
+            }
         }
     };
 
@@ -133,6 +138,7 @@ public final class SenderActivity extends Activity {
     protected void onStart() {
         super.onStart();
         IntentFilter filter = new IntentFilter(SenderService.ACTION_SESSION_ERROR);
+        filter.addAction(SenderService.ACTION_RECONNECTING);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(sessionErrorReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
         } else {
