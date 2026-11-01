@@ -40,9 +40,6 @@ import com.peng.cast.protocol.CastProtocol;
 import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
@@ -78,8 +75,6 @@ public final class SenderService extends Service {
     private VirtualDisplay virtualDisplay;
     private AudioRecord audioRecord;
     private Socket socket;
-    private DatagramSocket videoSocket;
-    private long videoFrameSequence;
     private DataOutputStream output;
     private PowerManager.WakeLock wakeLock;
     private WindowManager windowManager;
@@ -216,9 +211,6 @@ public final class SenderService extends Service {
         socket.setTcpNoDelay(true);
         output = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
         CastProtocol.writeHeader(output);
-        videoSocket = new DatagramSocket();
-        videoSocket.connect(InetAddress.getByName(host), CastProtocol.VIDEO_UDP_PORT);
-        videoFrameSequence = 0;
     }
 
     private void startEncoder() throws IOException {
@@ -267,7 +259,7 @@ public final class SenderService extends Service {
                         encoded.limit(bufferInfo.offset + bufferInfo.size);
                         byte[] payload = new byte[bufferInfo.size];
                         encoded.get(payload);
-                        sendVideoFrame(
+                        writePacket(CastProtocol.TYPE_FRAME,
                                 bufferInfo.presentationTimeUs, bufferInfo.flags, payload);
                     }
                 } finally {
@@ -290,35 +282,6 @@ public final class SenderService extends Service {
                 copyBuffer(csd1));
         writePacket(CastProtocol.TYPE_CONFIG, 0, 0,
                 CastProtocol.encodeVideoConfig(config));
-    }
-
-    private void sendVideoFrame(long presentationTimeUs, int flags, byte[] payload)
-            throws IOException {
-        DatagramSocket activeVideoSocket = videoSocket;
-        if (activeVideoSocket == null || activeVideoSocket.isClosed()) {
-            throw new IOException("Video datagram socket is closed");
-        }
-        int packetCount = (payload.length + CastProtocol.UDP_MAX_PAYLOAD_BYTES - 1)
-                / CastProtocol.UDP_MAX_PAYLOAD_BYTES;
-        if (packetCount < 1 || packetCount > CastProtocol.UDP_MAX_FRAME_PACKETS) {
-            throw new IOException("Video frame exceeds UDP packet limit");
-        }
-        long frameSequence = videoFrameSequence++;
-        for (int packetIndex = 0; packetIndex < packetCount; packetIndex++) {
-            int payloadOffset = packetIndex * CastProtocol.UDP_MAX_PAYLOAD_BYTES;
-            int payloadLength = Math.min(CastProtocol.UDP_MAX_PAYLOAD_BYTES,
-                    payload.length - payloadOffset);
-            ByteBuffer packet = ByteBuffer.allocate(CastProtocol.UDP_HEADER_BYTES + payloadLength);
-            packet.putInt(CastProtocol.UDP_MAGIC);
-            packet.put(CastProtocol.UDP_VERSION);
-            packet.putLong(frameSequence);
-            packet.putLong(presentationTimeUs);
-            packet.putInt(flags);
-            packet.putShort((short) packetIndex);
-            packet.putShort((short) packetCount);
-            packet.put(payload, payloadOffset, payloadLength);
-            activeVideoSocket.send(new DatagramPacket(packet.array(), packet.position()));
-        }
     }
 
     private void startAudioCaptureIfAvailable(boolean captureMicrophone) {
@@ -621,11 +584,6 @@ public final class SenderService extends Service {
     }
 
     private void closeSocket() {
-        DatagramSocket activeVideoSocket = videoSocket;
-        videoSocket = null;
-        if (activeVideoSocket != null) {
-            activeVideoSocket.close();
-        }
         Socket activeSocket = socket;
         socket = null;
         if (activeSocket != null) {
