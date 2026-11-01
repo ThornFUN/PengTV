@@ -10,7 +10,9 @@ import android.content.IntentFilter;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.text.InputType;
+import android.net.Uri;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
@@ -37,6 +39,7 @@ public final class SenderActivity extends Activity {
     private ArrayAdapter<String> receiverAddressAdapter;
     private CheckBox microphoneCapture;
     private TextView statusView;
+    private boolean awaitingOverlayPermission;
 
     private final BroadcastReceiver sessionErrorReceiver = new BroadcastReceiver() {
         @Override
@@ -143,6 +146,20 @@ public final class SenderActivity extends Activity {
         super.onStop();
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (!awaitingOverlayPermission) {
+            return;
+        }
+        awaitingOverlayPermission = false;
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)) {
+            requestProjectionWithAudioPermission();
+        } else {
+            statusView.setText("需要允许 PENG投屏显示在其他应用上层，才能保持投屏悬浮窗");
+        }
+    }
+
     private void requestProjectionWithAudioPermission() {
         String host = receiverAddress.getText().toString().trim();
         if (host.isEmpty()) {
@@ -153,6 +170,9 @@ public final class SenderActivity extends Activity {
         getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE).edit()
                 .putBoolean(MICROPHONE_CAPTURE_KEY, microphoneCapture.isChecked())
                 .apply();
+        if (!requestOverlayPermissionIfNeeded()) {
+            return;
+        }
         boolean needsAudioPermission = microphoneCapture.isChecked()
                 || Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q;
         if (needsAudioPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
@@ -162,6 +182,18 @@ public final class SenderActivity extends Activity {
             return;
         }
         requestProjection();
+    }
+
+    private boolean requestOverlayPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)) {
+            return true;
+        }
+        awaitingOverlayPermission = true;
+        Intent settingsIntent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:" + getPackageName()));
+        startActivity(settingsIntent);
+        Toast.makeText(this, "请允许 PENG投屏显示在其他应用上层", Toast.LENGTH_LONG).show();
+        return false;
     }
 
     @Override

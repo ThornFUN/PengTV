@@ -30,6 +30,12 @@ import android.graphics.Point;
 import android.util.Log;
 import android.view.Display;
 import android.view.Surface;
+import android.view.Gravity;
+import android.view.View;
+import android.view.WindowManager;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
+import android.widget.TextView;
 
 import com.peng.cast.protocol.CastProtocol;
 
@@ -73,6 +79,8 @@ public final class SenderService extends Service {
     private Socket socket;
     private DataOutputStream output;
     private PowerManager.WakeLock wakeLock;
+    private WindowManager windowManager;
+    private View overlayView;
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -185,6 +193,7 @@ public final class SenderService extends Service {
             }, new Handler(Looper.getMainLooper()));
 
             connect(host);
+            showOverlay();
             startEncoder();
             registerDisplayListener();
             startAudioCaptureIfAvailable(captureMicrophone);
@@ -490,6 +499,7 @@ public final class SenderService extends Service {
     }
 
     private void stopStreaming() {
+        hideOverlay();
         if (!streaming) {
             return;
         }
@@ -511,6 +521,67 @@ public final class SenderService extends Service {
         unregisterDisplayListener();
         releaseProjection();
         releaseWakeLock();
+    }
+
+    private void showOverlay() {
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                if (overlayView != null) {
+                    return;
+                }
+                TextView view = new TextView(SenderService.this);
+                view.setText("PENG投屏\n点击停止");
+                view.setTextColor(Color.WHITE);
+                view.setTextSize(14);
+                int padding = dp(12);
+                view.setPadding(padding, padding, padding, padding);
+                GradientDrawable background = new GradientDrawable();
+                background.setColor(0xE61677FF);
+                background.setCornerRadius(dp(24));
+                view.setBackground(background);
+                view.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View clickedView) {
+                        startService(new Intent(SenderService.this, SenderService.class)
+                                .setAction(ACTION_STOP));
+                    }
+                });
+                WindowManager.LayoutParams parameters = new WindowManager.LayoutParams(
+                        WindowManager.LayoutParams.WRAP_CONTENT,
+                        WindowManager.LayoutParams.WRAP_CONTENT,
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                                ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                                : WindowManager.LayoutParams.TYPE_PHONE,
+                        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                                | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+                        android.graphics.PixelFormat.TRANSLUCENT);
+                parameters.gravity = Gravity.TOP | Gravity.END;
+                parameters.x = dp(16);
+                parameters.y = dp(64);
+                windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+                windowManager.addView(view, parameters);
+                overlayView = view;
+            }
+        });
+    }
+
+    private void hideOverlay() {
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                if (overlayView == null || windowManager == null) {
+                    return;
+                }
+                windowManager.removeView(overlayView);
+                overlayView = null;
+                windowManager = null;
+            }
+        });
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
     private void closeSocket() {
