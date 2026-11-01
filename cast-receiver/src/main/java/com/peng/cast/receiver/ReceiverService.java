@@ -29,6 +29,7 @@ import java.nio.ByteBuffer;
 public final class ReceiverService extends Service {
     private static final String TAG = "CastReceiver";
     private static final long SURFACE_WAIT_TIMEOUT_MS = 5_000;
+    private static final int SOCKET_BUFFER_BYTES = 64 * 1024;
     public static final int DOWNLOAD_PORT = 48998;
     public static final String SENDER_APK_PATH = "/peng-cast-sender.apk";
     private final LocalBinder binder = new LocalBinder();
@@ -242,6 +243,7 @@ public final class ReceiverService extends Service {
             serverSocket = new ServerSocket(CastProtocol.PORT);
             while (running) {
                 Socket socket = serverSocket.accept();
+                socket.setReceiveBufferSize(SOCKET_BUFFER_BYTES);
                 socket.setTcpNoDelay(true);
                 final int sessionId = replaceActiveSocket(socket);
                 showReceiverActivity();

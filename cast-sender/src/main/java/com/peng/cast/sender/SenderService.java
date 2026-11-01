@@ -60,6 +60,9 @@ public final class SenderService extends Service {
     private static final int NOTIFICATION_ID = 10;
     private static final int AUDIO_SAMPLE_RATE = 48_000;
     private static final long RECONNECT_DELAY_MS = 1_000;
+    private static final int VIDEO_BIT_RATE = 1_500_000;
+    private static final int VIDEO_FRAME_RATE = 20;
+    private static final int SOCKET_BUFFER_BYTES = 64 * 1024;
 
     private volatile boolean streaming;
     private volatile boolean audioStreaming;
@@ -203,6 +206,7 @@ public final class SenderService extends Service {
 
     private void connect(String host) throws IOException {
         socket = new Socket();
+        socket.setSendBufferSize(SOCKET_BUFFER_BYTES);
         socket.connect(new InetSocketAddress(host, CastProtocol.PORT), 5_000);
         socket.setTcpNoDelay(true);
         output = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
@@ -215,8 +219,8 @@ public final class SenderService extends Service {
         MediaFormat format = MediaFormat.createVideoFormat("video/avc", dimensions[0], dimensions[1]);
         format.setInteger(MediaFormat.KEY_COLOR_FORMAT,
                 MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
-        format.setInteger(MediaFormat.KEY_BIT_RATE, 3_000_000);
-        format.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
+        format.setInteger(MediaFormat.KEY_BIT_RATE, VIDEO_BIT_RATE);
+        format.setInteger(MediaFormat.KEY_FRAME_RATE, VIDEO_FRAME_RATE);
         format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
         format.setInteger(MediaFormat.KEY_PROFILE,
                 MediaCodecInfo.CodecProfileLevel.AVCProfileBaseline);
