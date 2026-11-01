@@ -41,6 +41,7 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
     private boolean bound;
     private TextView statusView;
     private ImageView downloadQrCodeView;
+    private ImageView castAddressQrCodeView;
     private LinearLayout waitingPanel;
     private FrameLayout root;
     private SurfaceView surfaceView;
@@ -83,17 +84,37 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
 
         statusView = new TextView(this);
         statusView.setTextColor(0xFFFFFFFF);
-        statusView.setTextSize(36);
+        statusView.setTextSize(28);
         statusView.setGravity(Gravity.CENTER);
         waitingPanel.addView(statusView, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
+        LinearLayout qrRow = new LinearLayout(this);
+        qrRow.setOrientation(LinearLayout.HORIZONTAL);
+        qrRow.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams qrRowParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        qrRowParams.topMargin = dp(16);
+        waitingPanel.addView(qrRow, qrRowParams);
+
+        LinearLayout downloadQrPanel = createQrPanel("扫码下载发送端");
         downloadQrCodeView = new ImageView(this);
         downloadQrCodeView.setBackgroundColor(0xFFFFFFFF);
         downloadQrCodeView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-        LinearLayout.LayoutParams qrParams = new LinearLayout.LayoutParams(dp(360), dp(360));
-        qrParams.topMargin = dp(16);
-        waitingPanel.addView(downloadQrCodeView, qrParams);
+        downloadQrPanel.addView(downloadQrCodeView,
+                new LinearLayout.LayoutParams(dp(260), dp(260)));
+        qrRow.addView(downloadQrPanel);
+
+        LinearLayout castAddressQrPanel = createQrPanel("扫码获取电视投屏地址");
+        castAddressQrCodeView = new ImageView(this);
+        castAddressQrCodeView.setBackgroundColor(0xFFFFFFFF);
+        castAddressQrCodeView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        castAddressQrPanel.addView(castAddressQrCodeView,
+                new LinearLayout.LayoutParams(dp(260), dp(260)));
+        LinearLayout.LayoutParams castQrPanelParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        castQrPanelParams.leftMargin = dp(32);
+        qrRow.addView(castAddressQrPanel, castQrPanelParams);
         root.addView(waitingPanel, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
                 Gravity.CENTER));
@@ -141,6 +162,7 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
                 statusView.setVisibility(View.VISIBLE);
                 statusView.setText("正在接收画面…");
                 downloadQrCodeView.setVisibility(View.GONE);
+                castAddressQrCodeView.setVisibility(View.GONE);
                 waitingPanel.setVisibility(View.VISIBLE);
             }
         });
@@ -205,18 +227,38 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
         String localIp = getLocalIp();
         String downloadUrl = "http://" + localIp + ":"
                 + ReceiverService.DOWNLOAD_PORT + ReceiverService.SENDER_APK_PATH;
-        statusView.setText("请用手机浏览器访问\n" + downloadUrl
-                + "\n下载并安装 PENG投屏发送端\n\n"
-                + "等待手机连接\nIP: " + localIp + ":" + CastProtocol.PORT);
+        String castAddress = localIp + ":" + CastProtocol.PORT;
+        statusView.setText("扫描左侧二维码下载安装发送端\n"
+                + "扫描右侧二维码获取电视投屏地址\n\n"
+                + "等待手机连接\nIP: " + castAddress);
         try {
-            downloadQrCodeView.setImageBitmap(generateQrCode(downloadUrl, dp(360)));
+            downloadQrCodeView.setImageBitmap(generateQrCode(downloadUrl, dp(260)));
+            castAddressQrCodeView.setImageBitmap(generateQrCode(castAddress, dp(260)));
             downloadQrCodeView.setVisibility(View.VISIBLE);
+            castAddressQrCodeView.setVisibility(View.VISIBLE);
         } catch (WriterException exception) {
-            Log.e(TAG, "Unable to generate sender download QR code", exception);
+            Log.e(TAG, "Unable to generate cast QR codes", exception);
             downloadQrCodeView.setVisibility(View.GONE);
-            statusView.setText("无法生成下载二维码\n" + downloadUrl
-                    + "\n\n等待手机连接\nIP: " + localIp + ":" + CastProtocol.PORT);
+            castAddressQrCodeView.setVisibility(View.GONE);
+            statusView.setText("无法生成二维码\n下载地址：" + downloadUrl
+                    + "\n投屏地址：" + castAddress);
         }
+    }
+
+    private LinearLayout createQrPanel(String label) {
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setGravity(Gravity.CENTER_HORIZONTAL);
+        TextView labelView = new TextView(this);
+        labelView.setText(label);
+        labelView.setTextColor(0xFFFFFFFF);
+        labelView.setTextSize(24);
+        labelView.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        labelParams.bottomMargin = dp(8);
+        panel.addView(labelView, labelParams);
+        return panel;
     }
 
     private Bitmap generateQrCode(String content, int size) throws WriterException {
