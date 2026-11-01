@@ -63,8 +63,8 @@ public final class SenderService extends Service {
     private static final int NOTIFICATION_ID = 10;
     private static final int AUDIO_SAMPLE_RATE = 48_000;
     private static final long RECONNECT_DELAY_MS = 1_000;
-    private static final int VIDEO_BIT_RATE = 1_500_000;
-    private static final int VIDEO_FRAME_RATE = 20;
+    private static final int VIDEO_BIT_RATE = 8_000_000;
+    private static final int VIDEO_FRAME_RATE = 15;
     private static final int SOCKET_BUFFER_BYTES = 64 * 1024;
     private static final long VIDEO_FRAME_INTERVAL_US = 1_000_000L / VIDEO_FRAME_RATE;
 
