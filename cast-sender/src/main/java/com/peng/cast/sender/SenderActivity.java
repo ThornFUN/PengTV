@@ -240,6 +240,7 @@ public final class SenderActivity extends Activity {
         }
         Toast.makeText(this, "正在连接电视", Toast.LENGTH_SHORT).show();
         statusView.setText("正在连接电视…");
+        moveTaskToBack(true);
     }
 
     private void stopCasting() {

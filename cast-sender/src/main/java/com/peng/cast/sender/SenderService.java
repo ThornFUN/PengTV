@@ -26,8 +26,10 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
+import android.graphics.Point;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Display;
 import android.view.Surface;
 import android.view.Gravity;
 import android.view.View;
@@ -101,8 +103,11 @@ public final class SenderService extends Service {
     }
 
     private int[] getCaptureDimensions() {
-        DisplayMetrics metrics = getResources().getDisplayMetrics();
-        return scaleTo720p(metrics.widthPixels, metrics.heightPixels);
+        DisplayManager manager = (DisplayManager) getSystemService(Context.DISPLAY_SERVICE);
+        Display display = manager.getDisplay(Display.DEFAULT_DISPLAY);
+        Point size = new Point();
+        display.getRealSize(size);
+        return scaleTo720p(size.x, size.y);
     }
 
     @Override

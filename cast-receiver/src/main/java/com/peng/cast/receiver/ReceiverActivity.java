@@ -43,7 +43,7 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
     private ImageView downloadQrCodeView;
     private ImageView castAddressQrCodeView;
     private LinearLayout waitingPanel;
-    private SurfaceView surfaceView;
+    private AspectRatioSurfaceView surfaceView;
 
     private final ServiceConnection connection = new ServiceConnection() {
         @Override
@@ -68,11 +68,12 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
         getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         FrameLayout root = new FrameLayout(this);
-        surfaceView = new SurfaceView(this);
+        surfaceView = new AspectRatioSurfaceView(this);
         surfaceView.setId(R.id.receiver_surface);
         surfaceView.getHolder().addCallback(this);
         root.addView(surfaceView, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
+                Gravity.CENTER));
 
         waitingPanel = new LinearLayout(this);
         waitingPanel.setOrientation(LinearLayout.VERTICAL);
@@ -179,6 +180,12 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
 
     @Override
     public void onVideoConfigured(final int width, final int height) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                surfaceView.setAspectRatio(width, height);
+            }
+        });
     }
 
     @Override
@@ -188,6 +195,7 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
             public void run() {
                 updateStatus();
                 waitingPanel.setVisibility(View.VISIBLE);
+                surfaceView.setAspectRatio(0, 0);
             }
         });
     }
