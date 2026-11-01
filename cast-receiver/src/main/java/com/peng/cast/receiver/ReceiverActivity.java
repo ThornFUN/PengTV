@@ -45,6 +45,8 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
     private LinearLayout waitingPanel;
     private FrameLayout root;
     private SurfaceView surfaceView;
+    private int videoWidth;
+    private int videoHeight;
 
     private final ServiceConnection connection = new ServiceConnection() {
         @Override
@@ -74,6 +76,13 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
         surfaceView.getHolder().addCallback(this);
         root.addView(surfaceView, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        root.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+            @Override
+            public void onLayoutChange(View view, int left, int top, int right, int bottom,
+                    int oldLeft, int oldTop, int oldRight, int oldBottom) {
+                resizeVideoSurface();
+            }
+        });
 
         waitingPanel = new LinearLayout(this);
         waitingPanel.setOrientation(LinearLayout.VERTICAL);
@@ -145,6 +154,7 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+        resizeVideoSurface();
     }
 
     @Override
@@ -183,7 +193,9 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
         surfaceView.post(new Runnable() {
             @Override
             public void run() {
-                resizeVideoSurface(width, height);
+                videoWidth = width;
+                videoHeight = height;
+                resizeVideoSurface();
             }
         });
     }
@@ -200,7 +212,7 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
         });
     }
 
-    private void resizeVideoSurface(int videoWidth, int videoHeight) {
+    private void resizeVideoSurface() {
         int containerWidth = root.getWidth();
         int containerHeight = root.getHeight();
         if (containerWidth == 0 || containerHeight == 0 || videoWidth <= 0 || videoHeight <= 0) {
@@ -219,6 +231,8 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
     }
 
     private void resetVideoSurface() {
+        videoWidth = 0;
+        videoHeight = 0;
         surfaceView.setLayoutParams(new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     }

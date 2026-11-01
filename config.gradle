@@ -28,8 +28,8 @@ ext.pengTv = [
                         applicationId: "com.peng.cast.receiver",
                         minSdk       : 19,
                         targetSdk    : 28,
-                        versionCode  : 12,
-                        versionName  : "0.1.11"
+                        versionCode  : 13,
+                        versionName  : "0.1.12"
                 ],
                 castSender: [
                         applicationId: "com.peng.cast.sender",
