@@ -10,7 +10,14 @@ public final class CastProtocol {
     public static final int MAGIC = 0x50434153;
     public static final short VERSION = 1;
     public static final int PORT = 48999;
+    public static final int VIDEO_UDP_PORT = 49000;
     public static final int MAX_PACKET_BYTES = 2 * 1024 * 1024;
+    public static final int UDP_MAGIC = 0x50435544;
+    public static final byte UDP_VERSION = 1;
+    public static final int UDP_HEADER_BYTES = 29;
+    public static final int UDP_MAX_PAYLOAD_BYTES = 1_200;
+    public static final int UDP_MAX_FRAME_PACKETS = 1_024;
+    public static final int FRAME_FLAG_KEY = 1;
 
     public static final byte TYPE_CONFIG = 1;
     public static final byte TYPE_FRAME = 2;

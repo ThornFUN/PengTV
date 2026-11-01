@@ -22,6 +22,9 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
@@ -40,6 +43,8 @@ public final class ReceiverService extends Service {
     private volatile boolean running;
     private Thread serverThread;
     private ServerSocket serverSocket;
+    private Thread videoDatagramThread;
+    private DatagramSocket videoDatagramSocket;
     private Thread downloadServerThread;
     private ServerSocket downloadServerSocket;
     private Socket activeSocket;
@@ -51,6 +56,7 @@ public final class ReceiverService extends Service {
     private boolean firstFrameRendered;
     private boolean firstAudioFrameRendered;
     private volatile ReceiverListener receiverListener;
+    private final VideoFrameAssembler videoFrameAssembler = new VideoFrameAssembler();
 
     public interface ReceiverListener {
         void onSenderConnected();
@@ -60,6 +66,14 @@ public final class ReceiverService extends Service {
         void onFirstFrameRendered();
 
         void onSenderDisconnected();
+    }
+
+    private void closeVideoDatagramSocket() {
+        DatagramSocket activeSocket = videoDatagramSocket;
+        videoDatagramSocket = null;
+        if (activeSocket != null) {
+            activeSocket.close();
+        }
     }
 
     public final class LocalBinder extends Binder {
@@ -124,6 +138,7 @@ public final class ReceiverService extends Service {
                 }
             }, "cast-receiver");
             serverThread.start();
+            startVideoDatagramReceiver();
             startDownloadServer();
         }
     }
@@ -131,11 +146,70 @@ public final class ReceiverService extends Service {
     private void stopReceiver() {
         running = false;
         closeServerSocket();
+        closeVideoDatagramSocket();
         closeDownloadServerSocket();
         synchronized (sessionLock) {
             closeActiveSocket();
             releaseDecoder();
             releaseAudioDecoder();
+        }
+    }
+
+    private void startVideoDatagramReceiver() {
+        videoDatagramThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                receiveVideoDatagrams();
+            }
+        }, "cast-receiver-video-udp");
+        videoDatagramThread.start();
+    }
+
+    private void receiveVideoDatagrams() {
+        try {
+            videoDatagramSocket = new DatagramSocket(CastProtocol.VIDEO_UDP_PORT);
+            byte[] buffer = new byte[CastProtocol.UDP_HEADER_BYTES
+                    + CastProtocol.UDP_MAX_PAYLOAD_BYTES];
+            while (running) {
+                DatagramPacket datagram = new DatagramPacket(buffer, buffer.length);
+                videoDatagramSocket.receive(datagram);
+                handleVideoDatagram(datagram);
+            }
+        } catch (IOException exception) {
+            if (running) {
+                Log.e(TAG, "Video datagram receiver failed", exception);
+            }
+        } finally {
+            closeVideoDatagramSocket();
+        }
+    }
+
+    private void handleVideoDatagram(DatagramPacket datagram) {
+        if (datagram.getLength() < CastProtocol.UDP_HEADER_BYTES) {
+            return;
+        }
+        ByteBuffer input = ByteBuffer.wrap(datagram.getData(), datagram.getOffset(),
+                datagram.getLength());
+        if (input.getInt() != CastProtocol.UDP_MAGIC
+                || input.get() != CastProtocol.UDP_VERSION) {
+            return;
+        }
+        long sequence = input.getLong();
+        long presentationTimeUs = input.getLong();
+        int flags = input.getInt();
+        int packetIndex = input.getShort() & 0xffff;
+        int packetCount = input.getShort() & 0xffff;
+        byte[] payload = new byte[input.remaining()];
+        input.get(payload);
+        synchronized (sessionLock) {
+            if (!isActiveVideoSender(datagram.getAddress())) {
+                return;
+            }
+            CompletedVideoFrame frame = videoFrameAssembler.add(sequence, presentationTimeUs,
+                    flags, packetIndex, packetCount, payload);
+            if (frame != null) {
+                queueFrame(frame.presentationTimeUs, frame.flags, frame.payload);
+            }
         }
     }
 
@@ -334,6 +408,7 @@ public final class ReceiverService extends Service {
             closeActiveSocket();
             activeSocket = socket;
             activeSessionId++;
+            videoFrameAssembler.reset();
             return activeSessionId;
         }
     }
@@ -342,12 +417,17 @@ public final class ReceiverService extends Service {
         return activeSocket == socket && activeSessionId == sessionId;
     }
 
+    private boolean isActiveVideoSender(InetAddress address) {
+        return activeSocket != null && activeSocket.getInetAddress().equals(address);
+    }
+
     private boolean finishActiveSession(Socket socket, int sessionId) {
         synchronized (sessionLock) {
             if (!isActiveSession(socket, sessionId)) {
                 return false;
             }
             activeSocket = null;
+            videoFrameAssembler.reset();
             releaseDecoder();
             releaseAudioDecoder();
             return true;
@@ -376,6 +456,7 @@ public final class ReceiverService extends Service {
         firstFrameLogged = false;
         firstFrameRendered = false;
         releaseDecoder();
+        videoFrameAssembler.reset();
         try {
             MediaFormat format = MediaFormat.createVideoFormat("video/avc", config.width, config.height);
             format.setByteBuffer("csd-0", ByteBuffer.wrap(combineCsd(config.csd0, config.csd1)));
@@ -392,6 +473,10 @@ public final class ReceiverService extends Service {
     }
 
     private void queueFrame(CastProtocol.Packet packet) {
+        queueFrame(packet.presentationTimeUs, packet.flags, packet.payload);
+    }
+
+    private void queueFrame(long presentationTimeUs, int flags, byte[] payload) {
         MediaCodec activeDecoder = decoder;
         if (activeDecoder == null) {
             return;
@@ -399,20 +484,21 @@ public final class ReceiverService extends Service {
         try {
             if (!firstFrameLogged) {
                 firstFrameLogged = true;
-                Log.i(TAG, "First H.264 frame, flags=" + packet.flags
-                        + ", bytes=" + describeBytes(packet.payload));
+                Log.i(TAG, "First H.264 frame, flags=" + flags
+                        + ", bytes=" + describeBytes(payload));
             }
             int inputIndex = activeDecoder.dequeueInputBuffer(10_000);
             if (inputIndex >= 0) {
                 ByteBuffer inputBuffer = activeDecoder.getInputBuffers()[inputIndex];
                 inputBuffer.clear();
-                inputBuffer.put(packet.payload);
-                activeDecoder.queueInputBuffer(inputIndex, 0, packet.payload.length,
-                        packet.presentationTimeUs, packet.flags);
+                inputBuffer.put(payload);
+                activeDecoder.queueInputBuffer(inputIndex, 0, payload.length,
+                        presentationTimeUs, flags);
             }
             drainDecoder(activeDecoder);
         } catch (RuntimeException exception) {
             Log.e(TAG, "H.264 decoder rejected a video frame", exception);
+            videoFrameAssembler.waitForKeyFrame();
             releaseDecoder();
         }
     }
@@ -628,5 +714,95 @@ public final class ReceiverService extends Service {
         System.arraycopy(csd0, 0, combined, 0, csd0.length);
         System.arraycopy(csd1, 0, combined, csd0.length, csd1.length);
         return combined;
+    }
+
+    private static final class CompletedVideoFrame {
+        final long presentationTimeUs;
+        final int flags;
+        final byte[] payload;
+
+        CompletedVideoFrame(long presentationTimeUs, int flags, byte[] payload) {
+            this.presentationTimeUs = presentationTimeUs;
+            this.flags = flags;
+            this.payload = payload;
+        }
+    }
+
+    private static final class VideoFrameAssembler {
+        private long sequence = -1;
+        private long lastCompletedSequence = -1;
+        private long presentationTimeUs;
+        private int flags;
+        private byte[][] fragments;
+        private int receivedFragmentCount;
+        private boolean waitingForKeyFrame = true;
+
+        void reset() {
+            sequence = -1;
+            lastCompletedSequence = -1;
+            fragments = null;
+            receivedFragmentCount = 0;
+            waitingForKeyFrame = true;
+        }
+
+        void waitForKeyFrame() {
+            waitingForKeyFrame = true;
+        }
+
+        CompletedVideoFrame add(long newSequence, long newPresentationTimeUs, int newFlags,
+                int packetIndex, int packetCount, byte[] payload) {
+            if (packetCount < 1 || packetCount > CastProtocol.UDP_MAX_FRAME_PACKETS
+                    || packetIndex >= packetCount || newSequence <= lastCompletedSequence) {
+                return null;
+            }
+            if (newSequence != sequence) {
+                if (sequence != -1 && newSequence < sequence) {
+                    return null;
+                }
+                if (sequence != -1) {
+                    waitingForKeyFrame = true;
+                }
+                sequence = newSequence;
+                presentationTimeUs = newPresentationTimeUs;
+                flags = newFlags;
+                fragments = new byte[packetCount][];
+                receivedFragmentCount = 0;
+            }
+            if (fragments == null || fragments.length != packetCount || flags != newFlags
+                    || presentationTimeUs != newPresentationTimeUs || fragments[packetIndex] != null) {
+                return null;
+            }
+            fragments[packetIndex] = payload;
+            receivedFragmentCount++;
+            if (receivedFragmentCount != packetCount) {
+                return null;
+            }
+
+            int length = 0;
+            for (byte[] fragment : fragments) {
+                length += fragment.length;
+            }
+            byte[] frame = new byte[length];
+            int offset = 0;
+            for (byte[] fragment : fragments) {
+                System.arraycopy(fragment, 0, frame, offset, fragment.length);
+                offset += fragment.length;
+            }
+            if (lastCompletedSequence != -1 && sequence != lastCompletedSequence + 1) {
+                waitingForKeyFrame = true;
+            }
+            lastCompletedSequence = sequence;
+            boolean keyFrame = (flags & CastProtocol.FRAME_FLAG_KEY) != 0;
+            long completedPresentationTimeUs = presentationTimeUs;
+            int completedFlags = flags;
+            sequence = -1;
+            fragments = null;
+            receivedFragmentCount = 0;
+            if (keyFrame) {
+                waitingForKeyFrame = false;
+            }
+            return waitingForKeyFrame ? null
+                    : new CompletedVideoFrame(completedPresentationTimeUs, completedFlags, frame);
+        }
     }
 }
