@@ -43,4 +43,5 @@ tasks.named("preBuild").configure {
 dependencies {
     implementation project(":cast-protocol")
     implementation "androidx.core:core:1.9.0"
+    implementation "com.google.zxing:core:3.5.1"
 }

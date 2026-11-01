@@ -5,29 +5,43 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.peng.cast.protocol.CastProtocol;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.EncodeHintType;
+import com.google.zxing.WriterException;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.QRCodeWriter;
 
+import java.util.HashMap;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.util.Map;
 import java.net.SocketException;
 import java.util.Enumeration;
 
 public final class ReceiverActivity extends Activity implements SurfaceHolder.Callback,
         ReceiverService.ReceiverListener {
+    private static final String TAG = "CastReceiverActivity";
     private ReceiverService receiverService;
     private boolean bound;
     private TextView statusView;
+    private ImageView downloadQrCodeView;
+    private LinearLayout waitingPanel;
     private FrameLayout root;
     private SurfaceView surfaceView;
 
@@ -60,13 +74,27 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
         root.addView(surfaceView, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
+        waitingPanel = new LinearLayout(this);
+        waitingPanel.setOrientation(LinearLayout.VERTICAL);
+        waitingPanel.setGravity(Gravity.CENTER_HORIZONTAL);
+        waitingPanel.setBackgroundColor(0x99000000);
+        int panelPadding = dp(24);
+        waitingPanel.setPadding(panelPadding, panelPadding, panelPadding, panelPadding);
+
         statusView = new TextView(this);
         statusView.setTextColor(0xFFFFFFFF);
-        statusView.setTextSize(60);
+        statusView.setTextSize(36);
         statusView.setGravity(Gravity.CENTER);
-        statusView.setBackgroundColor(0x99000000);
-        statusView.setPadding(24, 16, 24, 16);
-        root.addView(statusView, new FrameLayout.LayoutParams(
+        waitingPanel.addView(statusView, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        downloadQrCodeView = new ImageView(this);
+        downloadQrCodeView.setBackgroundColor(0xFFFFFFFF);
+        downloadQrCodeView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        LinearLayout.LayoutParams qrParams = new LinearLayout.LayoutParams(dp(360), dp(360));
+        qrParams.topMargin = dp(16);
+        waitingPanel.addView(downloadQrCodeView, qrParams);
+        root.addView(waitingPanel, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
                 Gravity.CENTER));
         setContentView(root);
@@ -112,6 +140,8 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
             public void run() {
                 statusView.setVisibility(View.VISIBLE);
                 statusView.setText("正在接收画面…");
+                downloadQrCodeView.setVisibility(View.GONE);
+                waitingPanel.setVisibility(View.VISIBLE);
             }
         });
     }
@@ -121,7 +151,7 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                statusView.setVisibility(View.GONE);
+                waitingPanel.setVisibility(View.GONE);
             }
         });
     }
@@ -142,7 +172,7 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
             @Override
             public void run() {
                 updateStatus();
-                statusView.setVisibility(View.VISIBLE);
+                waitingPanel.setVisibility(View.VISIBLE);
                 resetVideoSurface();
             }
         });
@@ -173,10 +203,39 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
 
     private void updateStatus() {
         String localIp = getLocalIp();
-        statusView.setText("请用手机浏览器访问\nhttp://" + localIp + ":"
-                + ReceiverService.DOWNLOAD_PORT + ReceiverService.SENDER_APK_PATH
+        String downloadUrl = "http://" + localIp + ":"
+                + ReceiverService.DOWNLOAD_PORT + ReceiverService.SENDER_APK_PATH;
+        statusView.setText("请用手机浏览器访问\n" + downloadUrl
                 + "\n下载并安装 PENG投屏发送端\n\n"
-                + "等待手机连接\nIP: " + getLocalIp() + ":" + CastProtocol.PORT);
+                + "等待手机连接\nIP: " + localIp + ":" + CastProtocol.PORT);
+        try {
+            downloadQrCodeView.setImageBitmap(generateQrCode(downloadUrl, dp(360)));
+            downloadQrCodeView.setVisibility(View.VISIBLE);
+        } catch (WriterException exception) {
+            Log.e(TAG, "Unable to generate sender download QR code", exception);
+            downloadQrCodeView.setVisibility(View.GONE);
+            statusView.setText("无法生成下载二维码\n" + downloadUrl
+                    + "\n\n等待手机连接\nIP: " + localIp + ":" + CastProtocol.PORT);
+        }
+    }
+
+    private Bitmap generateQrCode(String content, int size) throws WriterException {
+        Map<EncodeHintType, Object> hints = new HashMap<EncodeHintType, Object>();
+        hints.put(EncodeHintType.CHARACTER_SET, "UTF-8");
+        hints.put(EncodeHintType.MARGIN, 1);
+        BitMatrix matrix = new QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, size, size,
+                hints);
+        int[] pixels = new int[size * size];
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                pixels[y * size + x] = matrix.get(x, y) ? 0xFF000000 : 0xFFFFFFFF;
+            }
+        }
+        return Bitmap.createBitmap(pixels, size, size, Bitmap.Config.RGB_565);
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
     private String getLocalIp() {
