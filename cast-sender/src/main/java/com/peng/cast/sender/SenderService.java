@@ -33,9 +33,6 @@ import android.view.Surface;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
-import android.graphics.Color;
-import android.graphics.drawable.GradientDrawable;
-import android.widget.TextView;
 
 import com.peng.cast.protocol.CastProtocol;
 
@@ -567,35 +564,20 @@ public final class SenderService extends Service {
                 if (overlayView != null) {
                     return;
                 }
-                TextView view = new TextView(SenderService.this);
-                view.setText("PENG投屏\n点击停止");
-                view.setTextColor(Color.WHITE);
-                view.setTextSize(14);
-                int padding = dp(12);
-                view.setPadding(padding, padding, padding, padding);
-                GradientDrawable background = new GradientDrawable();
-                background.setColor(0xE61677FF);
-                background.setCornerRadius(dp(24));
-                view.setBackground(background);
-                view.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View clickedView) {
-                        startService(new Intent(SenderService.this, SenderService.class)
-                                .setAction(ACTION_STOP));
-                    }
-                });
+                View view = new View(SenderService.this);
+                view.setBackgroundColor(0x00000000);
                 WindowManager.LayoutParams parameters = new WindowManager.LayoutParams(
-                        WindowManager.LayoutParams.WRAP_CONTENT,
-                        WindowManager.LayoutParams.WRAP_CONTENT,
+                        1,
+                        1,
                         Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                                 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
                                 : WindowManager.LayoutParams.TYPE_PHONE,
                         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                                | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+                                | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
                         android.graphics.PixelFormat.TRANSLUCENT);
                 parameters.gravity = Gravity.TOP | Gravity.END;
-                parameters.x = dp(16);
-                parameters.y = dp(64);
+                parameters.x = 0;
+                parameters.y = 0;
                 windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
                 if (addOverlayView(view, parameters)) {
                     overlayView = view;
