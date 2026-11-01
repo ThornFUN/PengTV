@@ -25,9 +25,11 @@ import java.nio.ByteBuffer;
 
 public final class ReceiverService extends Service {
     private static final String TAG = "CastReceiver";
+    private static final long SURFACE_WAIT_TIMEOUT_MS = 5_000;
     private final LocalBinder binder = new LocalBinder();
     private final Object lifecycleLock = new Object();
     private final Object sessionLock = new Object();
+    private final Object surfaceLock = new Object();
     private volatile Surface surface;
     private volatile boolean running;
     private Thread serverThread;
@@ -91,7 +93,10 @@ public final class ReceiverService extends Service {
     }
 
     public void setSurface(Surface newSurface) {
-        surface = newSurface;
+        synchronized (surfaceLock) {
+            surface = newSurface;
+            surfaceLock.notifyAll();
+        }
     }
 
     public void setReceiverListener(ReceiverListener listener) {
@@ -131,6 +136,7 @@ public final class ReceiverService extends Service {
                 Socket socket = serverSocket.accept();
                 socket.setTcpNoDelay(true);
                 final int sessionId = replaceActiveSocket(socket);
+                showReceiverActivity();
                 notifySenderConnected();
                 new Thread(new Runnable() {
                     @Override
@@ -152,12 +158,16 @@ public final class ReceiverService extends Service {
         try {
             DataInputStream input = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
             CastProtocol.readHeader(input);
+            if (!waitForSurface()) {
+                throw new IOException("Display surface was not ready");
+            }
             while (running && !socket.isClosed()) {
                 CastProtocol.Packet packet = CastProtocol.readPacket(input);
                 synchronized (sessionLock) {
                     if (!isActiveSession(socket, sessionId)) {
                         break;
                     }
+
                     if (packet.type == CastProtocol.TYPE_CONFIG) {
                         configureDecoder(CastProtocol.decodeVideoConfig(packet.payload));
                     } else if (packet.type == CastProtocol.TYPE_FRAME) {
@@ -181,6 +191,31 @@ public final class ReceiverService extends Service {
             if (finishActiveSession(socket, sessionId)) {
                 notifySenderDisconnected();
             }
+        }
+    }
+
+    private void showReceiverActivity() {
+        Intent intent = new Intent(this, ReceiverActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+        startActivity(intent);
+    }
+
+    private boolean waitForSurface() {
+        long deadline = System.currentTimeMillis() + SURFACE_WAIT_TIMEOUT_MS;
+        synchronized (surfaceLock) {
+            while (running && surface == null) {
+                long remaining = deadline - System.currentTimeMillis();
+                if (remaining <= 0) {
+                    return false;
+                }
+                try {
+                    surfaceLock.wait(remaining);
+                } catch (InterruptedException exception) {
+                    Thread.currentThread().interrupt();
+                    return false;
+                }
+            }
+            return surface != null;
         }
     }
 

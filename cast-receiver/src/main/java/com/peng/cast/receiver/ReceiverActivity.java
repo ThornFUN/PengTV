@@ -172,7 +172,9 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
     }
 
     private void updateStatus() {
-        statusView.setText("等待手机连接\nIP: " + getLocalIp() + ":" + CastProtocol.PORT);
+        statusView.setText("请先在手机安装 PENG投屏发送端\n"
+                + "手机端下载将由电视端提供（即将支持）\n\n"
+                + "等待手机连接\nIP: " + getLocalIp() + ":" + CastProtocol.PORT);
     }
 
     private String getLocalIp() {
