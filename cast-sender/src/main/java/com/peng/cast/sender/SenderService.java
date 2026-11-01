@@ -560,10 +560,33 @@ public final class SenderService extends Service {
                 parameters.x = dp(16);
                 parameters.y = dp(64);
                 windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-                windowManager.addView(view, parameters);
-                overlayView = view;
+                if (addOverlayView(view, parameters)) {
+                    overlayView = view;
+                } else {
+                    windowManager = null;
+                }
             }
         });
+    }
+
+    private boolean addOverlayView(View view, WindowManager.LayoutParams parameters) {
+        try {
+            windowManager.addView(view, parameters);
+            return true;
+        } catch (RuntimeException exception) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+                Log.w(TAG, "Unable to show cast overlay", exception);
+                return false;
+            }
+            parameters.type = WindowManager.LayoutParams.TYPE_PHONE;
+            try {
+                windowManager.addView(view, parameters);
+                return true;
+            } catch (RuntimeException fallbackException) {
+                Log.w(TAG, "Unable to show cast overlay", fallbackException);
+                return false;
+            }
+        }
     }
 
     private void hideOverlay() {
