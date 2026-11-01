@@ -172,8 +172,10 @@ public final class ReceiverActivity extends Activity implements SurfaceHolder.Ca
     }
 
     private void updateStatus() {
-        statusView.setText("请先在手机安装 PENG投屏发送端\n"
-                + "手机端下载将由电视端提供（即将支持）\n\n"
+        String localIp = getLocalIp();
+        statusView.setText("请用手机浏览器访问\nhttp://" + localIp + ":"
+                + ReceiverService.DOWNLOAD_PORT + ReceiverService.SENDER_APK_PATH
+                + "\n下载并安装 PENG投屏发送端\n\n"
                 + "等待手机连接\nIP: " + getLocalIp() + ":" + CastProtocol.PORT);
     }
 

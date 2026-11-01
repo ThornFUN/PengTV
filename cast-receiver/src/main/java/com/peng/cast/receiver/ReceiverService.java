@@ -17,8 +17,11 @@ import android.view.Surface;
 import com.peng.cast.protocol.CastProtocol;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
@@ -26,6 +29,8 @@ import java.nio.ByteBuffer;
 public final class ReceiverService extends Service {
     private static final String TAG = "CastReceiver";
     private static final long SURFACE_WAIT_TIMEOUT_MS = 5_000;
+    public static final int DOWNLOAD_PORT = 48998;
+    public static final String SENDER_APK_PATH = "/peng-cast-sender.apk";
     private final LocalBinder binder = new LocalBinder();
     private final Object lifecycleLock = new Object();
     private final Object sessionLock = new Object();
@@ -34,6 +39,8 @@ public final class ReceiverService extends Service {
     private volatile boolean running;
     private Thread serverThread;
     private ServerSocket serverSocket;
+    private Thread downloadServerThread;
+    private ServerSocket downloadServerSocket;
     private Socket activeSocket;
     private int activeSessionId;
     private MediaCodec decoder;
@@ -116,17 +123,118 @@ public final class ReceiverService extends Service {
                 }
             }, "cast-receiver");
             serverThread.start();
+            startDownloadServer();
         }
     }
 
     private void stopReceiver() {
         running = false;
         closeServerSocket();
+        closeDownloadServerSocket();
         synchronized (sessionLock) {
             closeActiveSocket();
             releaseDecoder();
             releaseAudioDecoder();
         }
+    }
+
+    private void startDownloadServer() {
+        if (downloadServerThread != null) {
+            return;
+        }
+        downloadServerThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                acceptDownloadRequests();
+            }
+        }, "cast-sender-download");
+        downloadServerThread.start();
+    }
+
+    private void acceptDownloadRequests() {
+        try {
+            downloadServerSocket = new ServerSocket(DOWNLOAD_PORT);
+            while (running) {
+                final Socket socket = downloadServerSocket.accept();
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        handleDownloadRequest(socket);
+                    }
+                }, "cast-sender-download-client").start();
+            }
+        } catch (IOException exception) {
+            if (running) {
+                Log.e(TAG, "Sender APK download server failed", exception);
+            }
+        } finally {
+            closeDownloadServerSocket();
+            downloadServerThread = null;
+        }
+    }
+
+    private void handleDownloadRequest(Socket socket) {
+        try {
+            socket.setSoTimeout(5_000);
+            InputStream input = new BufferedInputStream(socket.getInputStream());
+            String requestLine = readHttpLine(input);
+            OutputStream output = new BufferedOutputStream(socket.getOutputStream());
+            if (!("GET " + SENDER_APK_PATH + " HTTP/1.1").equals(requestLine)
+                    && !("GET " + SENDER_APK_PATH + " HTTP/1.0").equals(requestLine)) {
+                writeHttpResponse(output, "404 Not Found", "text/plain", new byte[0]);
+                return;
+            }
+            writeHttpResponse(output, "200 OK", "application/vnd.android.package-archive",
+                    readEmbeddedSenderApk());
+        } catch (IOException exception) {
+            Log.w(TAG, "Unable to provide sender APK", exception);
+        } finally {
+            try {
+                socket.close();
+            } catch (IOException ignored) {
+            }
+        }
+    }
+
+    private String readHttpLine(InputStream input) throws IOException {
+        StringBuilder line = new StringBuilder();
+        while (line.length() < 4_096) {
+            int value = input.read();
+            if (value == -1 || value == '\n') {
+                break;
+            }
+            if (value != '\r') {
+                line.append((char) value);
+            }
+        }
+        return line.toString();
+    }
+
+    private byte[] readEmbeddedSenderApk() throws IOException {
+        InputStream input = getAssets().open(SENDER_APK_PATH.substring(1));
+        try {
+            java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
+            byte[] buffer = new byte[16 * 1024];
+            int count;
+            while ((count = input.read(buffer)) != -1) {
+                output.write(buffer, 0, count);
+            }
+            return output.toByteArray();
+        } finally {
+            input.close();
+        }
+    }
+
+    private void writeHttpResponse(OutputStream output, String status, String contentType,
+            byte[] body) throws IOException {
+        String headers = "HTTP/1.1 " + status + "\r\n"
+                + "Content-Type: " + contentType + "\r\n"
+                + "Content-Length: " + body.length + "\r\n"
+                + "Content-Disposition: attachment; filename=\"peng-cast-sender.apk\"\r\n"
+                + "Connection: close\r\n\r\n";
+        output.write(headers.getBytes("US-ASCII"));
+        output.write(body);
+        output.flush();
     }
 
     private void acceptConnections() {
@@ -457,6 +565,17 @@ public final class ReceiverService extends Service {
     private void closeServerSocket() {
         ServerSocket activeSocket = serverSocket;
         serverSocket = null;
+        if (activeSocket != null) {
+            try {
+                activeSocket.close();
+            } catch (IOException ignored) {
+            }
+        }
+    }
+
+    private void closeDownloadServerSocket() {
+        ServerSocket activeSocket = downloadServerSocket;
+        downloadServerSocket = null;
         if (activeSocket != null) {
             try {
                 activeSocket.close();

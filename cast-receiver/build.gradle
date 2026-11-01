@@ -3,6 +3,7 @@ plugins {
 }
 
 def appConfig = rootProject.ext.pengTv.apps.castReceiver
+def embeddedSenderAssetsDir = file("$buildDir/generated/embedded-sender-assets")
 
 android {
     namespace "com.peng.cast.receiver"
@@ -20,6 +21,23 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
+    sourceSets {
+        main {
+            assets.srcDir embeddedSenderAssetsDir
+        }
+    }
+}
+
+tasks.register("copyEmbeddedSenderApk", Copy) {
+    dependsOn(":cast-sender:assembleDebug")
+    from(project(":cast-sender").file("build/outputs/apk/debug/cast-sender-debug.apk"))
+    into(embeddedSenderAssetsDir)
+    rename { "peng-cast-sender.apk" }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn(tasks.named("copyEmbeddedSenderApk"))
 }
 
 dependencies {
