@@ -59,6 +59,7 @@ public final class SenderService extends Service {
     private static final int NOTIFICATION_ID = 10;
     private static final int AUDIO_SAMPLE_RATE = 48_000;
     private static final long RECONNECT_DELAY_MS = 1_000;
+    private static final long DISPLAY_SIZE_CHECK_INTERVAL_MS = 500;
 
     private volatile boolean streaming;
     private volatile boolean audioStreaming;
@@ -74,6 +75,7 @@ public final class SenderService extends Service {
     private DisplayManager.DisplayListener displayListener;
     private int videoWidth;
     private int videoHeight;
+    private long lastDisplaySizeCheckMs;
     private AudioRecord audioRecord;
     private Socket socket;
     private DataOutputStream output;
@@ -128,9 +130,7 @@ public final class SenderService extends Service {
             @Override
             public void onDisplayChanged(int displayId) {
                 if (displayId == Display.DEFAULT_DISPLAY) {
-                    int[] dimensions = getCaptureDimensions();
-                    videoRestartRequested = dimensions[0] != videoWidth
-                            || dimensions[1] != videoHeight;
+                    requestVideoRestartIfDimensionsChanged();
                 }
             }
         };
@@ -143,6 +143,11 @@ public final class SenderService extends Service {
         }
         displayManager = null;
         displayListener = null;
+    }
+
+    private void requestVideoRestartIfDimensionsChanged() {
+        int[] dimensions = getCaptureDimensions();
+        videoRestartRequested = dimensions[0] != videoWidth || dimensions[1] != videoHeight;
     }
 
     @Override
@@ -279,6 +284,11 @@ public final class SenderService extends Service {
         MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
         ByteBuffer[] outputBuffers = encoder.getOutputBuffers();
         while (streaming) {
+            long now = System.currentTimeMillis();
+            if (now - lastDisplaySizeCheckMs >= DISPLAY_SIZE_CHECK_INTERVAL_MS) {
+                lastDisplaySizeCheckMs = now;
+                requestVideoRestartIfDimensionsChanged();
+            }
             if (videoRestartRequested) {
                 videoRestartRequested = false;
                 releaseVirtualDisplay();
