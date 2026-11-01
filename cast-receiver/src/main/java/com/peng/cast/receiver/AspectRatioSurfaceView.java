@@ -34,9 +34,9 @@ public final class AspectRatioSurfaceView extends SurfaceView {
         }
         float availableAspectRatio = (float) availableWidth / availableHeight;
         if (availableAspectRatio > aspectRatio) {
-            availableWidth = Math.round(availableHeight * aspectRatio);
-        } else {
             availableHeight = Math.round(availableWidth / aspectRatio);
+        } else {
+            availableWidth = Math.round(availableHeight * aspectRatio);
         }
         setMeasuredDimension(availableWidth, availableHeight);
     }
