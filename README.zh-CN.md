@@ -2,22 +2,36 @@
 
 [English](README.md) | 简体中文
 
-本工程包含三个可独立安装的应用：PENG 桌面、PENG直播 与 PENG影视。已构建的 release APK 会集中复制到工程根目录的 [`outputs/`](outputs/)。
+本工程包含三个可独立安装的应用：PENG 桌面、PENG TV 与 PENG影视。已构建的 release APK 会集中复制到工程根目录的 [`outputs/`](outputs/)。
 
 ## 已构建 APK
 
-| 应用 | APK | 兼容范围 | 签名 | SHA-256 |
+| 应用 | 包名 | APK | 兼容范围 | 作用 |
 |---|---|---|---|---|
-| PENG 桌面 | `outputs/PENG-Launcher-v0.1.0-release.apk` | Android 4.0 / API 14 及以上；不含 native 库，支持设备自身 ABI | 已使用本地 release 签名 | `6a7f45576b2e8f6123879f9b2ec29750f1c4ac9a3d956f6f59a46a660d644d0f` |
-| PENG直播 | `outputs/PENG-Live-v0.1.0-release.apk` | Android 4.4 / API 19 及以上；不含 native 库，支持设备自身 ABI | 新版本需重新构建 | — |
+| PENG 桌面 | `com.peng.launcher` | `PENG-Launcher-v0.1.0-release.apk` | Android 4.0 / API 14 及以上 | 面向电视遥控器的轻量桌面，提供应用快捷入口、全部应用、壁纸、Wi-Fi 设置与应用管理。 |
+| PENG TV | `com.peng.video` | `PENG-TV-v0.1.0-release.apk` | Android 4.4 / API 19 及以上 | IPTV 播放器；支持用户提供的 M3U、XMLTV、节目单预览、清晰度策略、线路回退与播放记录。 |
+| PENG影视（32 位） | `com.github.tvbox.osc.tk` | `PENG-Movie-API19-armeabi-v7a-release.apk` | Android 4.4 / API 19 及以上的 32 位 ARM 设备 | 基于 TVBox 组件的可配置影视客户端；适用于康佳等运行 32 位进程的旧电视。 |
+| PENG影视（64 位） | `com.github.tvbox.osc.tk` | `PENG-Movie-arm64-release.apk` | Android 4.4 / API 19 及以上的 64 位 ARM 设备 | 基于 TVBox 组件的可配置影视客户端；适用于 arm64 电视或盒子。 |
+
+PENG影视的两个 APK 使用相同包名，同一设备只能安装其中一个。旧的
+`PENG-Movie-API19-arm64-release.apk` 不作为推荐发布产物。
+
+## Release 校验值
+
+| APK | SHA-256 |
+|---|---|
+| `PENG-Launcher-v0.1.0-release.apk` | `6a7f45576b2e8f6123879f9b2ec29750f1c4ac9a3d956f6f59a46a660d644d0f` |
+| `PENG-TV-v0.1.0-release.apk` | `f4fd2b8881020852621d1f55e395fe406738b7593a3f81181955d9a5114b070a` |
+| `PENG-Movie-API19-armeabi-v7a-release.apk` | `e532f4e717d2ee3429e10bb8e502cf0ce8641972e1a071f5317665a869e66d98` |
+| `PENG-Movie-arm64-release.apk` | `246cbb59b50680437ee14f29b2760bda861e426604f60c6aa60487ef29b9b7d4` |
 
 ## 应用概览
 
 | 模块 | 包名 | 定位 | 视频源策略 |
 |---|---|---|---|
 | `launcher/` | `com.peng.launcher` | 默认桌面与应用管理 | 不提供视频播放或视频源 |
-| `live-show/` | `com.peng.live.show` | 轻量 IPTV 直播播放器 | 本地默认公开频道；用户可添加拥有使用权的 M3U 与 XMLTV 地址 |
-| `movie/` | `com.peng.movie` | 基于 TVBox 的影视与直播客户端 | 影视与直播源由用户配置 |
+| `live-show/` | `com.peng.video` | 轻量 IPTV 直播播放器 | 用户可添加拥有使用权的 M3U 与 XMLTV 地址 |
+| `movie/` | `com.github.tvbox.osc.tk` | 基于 TVBox 的影视与直播客户端 | 影视与直播源由用户配置 |
 
 ## PENG 桌面
 
@@ -83,10 +97,10 @@ adb install -r launcher/build/outputs/apk/debug/launcher-debug.apk
 
 首次使用时，在系统设置中将 **PENG 桌面** 设为默认桌面应用，或从应用列表直接启动。
 
-## PENG直播
+## PENG TV
 
 `live-show/` 是与 PENG 桌面同仓库、但可独立安装的 IPTV 应用，包名为
-`com.peng.live.show`。它不声明 HOME，不会改变默认桌面。
+`com.peng.video`。它不声明 HOME，不会改变默认桌面。
 
 - 内置 `assets/default_channels.tsv` 中的默认频道；可追加用户有权使用的 M3U 频道源。
 - 可选导入 XMLTV 地址，在频道列表中显示节目单预览。
@@ -95,9 +109,9 @@ adb install -r launcher/build/outputs/apk/debug/launcher-debug.apk
 - 采用兼容 Android 4.4 的 ExoPlayer HLS 播放器，适合设备自身支持的 HTTP/HLS 流。
 - 默认采用稳定优先的 20 至 30 秒缓冲策略，可选流畅（480P）、均衡（720P）和高清（1080P）三档；线路缓冲超时或播放失败时优先切换备用线路，并记录线路启动速度和失败次数以优化后续排序。
 - 频道按三位编号显示；应用启动时自动恢复上次选择的频道，播放页可按上、下键切换上一或下一频道，也可用数字键输入编号后按确认跳转。
-- 播放页按菜单键打开频道列表，频道列表按返回键回到播放页；播放页连续按两次返回键退出 PENG直播。
+- 播放页按菜单键打开频道列表，频道列表按返回键回到播放页；播放页连续按两次返回键退出 PENG TV。
 
-单独构建 PENG直播：
+单独构建 PENG TV：
 
 ```bash
 ./gradlew :live-show:assembleRelease
@@ -106,13 +120,13 @@ adb install -r launcher/build/outputs/apk/debug/launcher-debug.apk
 签名后的 APK 输出到：
 
 ```text
-live-show/build/outputs/apk/release/PENG-Live-v<version>-release.apk
+live-show/build/outputs/apk/release/PENG-TV-v<version>-release.apk
 ```
 
 ## PENG影视
 
 `movie/` 是收编到 PengLive 根工程的 TVBox 影视客户端，包名为
-`com.peng.movie`。它依赖 `movie/quickjs/`，Python 风味额外依赖
+`com.github.tvbox.osc.tk`。它依赖 `movie/quickjs/`，Python 风味额外依赖
 `movie/pyramid/`；默认的 Java 风味兼容 Android 4.4 / API 19。
 
 构建 64 位通用 Debug APK：
