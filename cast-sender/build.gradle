@@ -4,6 +4,14 @@ plugins {
 
 def appConfig = rootProject.ext.pengTv.apps.castSender
 
+def signingProperties = new Properties()
+def signingPropertiesFile = rootProject.file("keystore.properties")
+if (signingPropertiesFile.isFile()) {
+    signingPropertiesFile.withInputStream { signingProperties.load(it) }
+}
+def hasReleaseSigning = ["storeFile", "storePassword", "keyAlias", "keyPassword"]
+        .every { signingProperties.getProperty(it) }
+
 android {
     namespace "com.peng.cast.sender"
     compileSdk rootProject.ext.pengTv.compileSdk
@@ -16,6 +24,25 @@ android {
         versionName appConfig.versionName
     }
 
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile rootProject.file(signingProperties.getProperty("storeFile"))
+                storePassword signingProperties.getProperty("storePassword")
+                keyAlias signingProperties.getProperty("keyAlias")
+                keyPassword signingProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
@@ -25,4 +52,14 @@ android {
 dependencies {
     implementation project(":cast-protocol")
     implementation "androidx.core:core:1.9.0"
+}
+
+def appVersionName = android.defaultConfig.versionName
+
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        variant.outputs.forEach { output ->
+            output.outputFileName.set("PENG-Cast-Sender-v${appVersionName}-${variant.name}.apk")
+        }
+    }
 }

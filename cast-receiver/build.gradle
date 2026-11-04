@@ -3,7 +3,17 @@ plugins {
 }
 
 def appConfig = rootProject.ext.pengTv.apps.castReceiver
-def embeddedSenderAssetsDir = file("$buildDir/generated/embedded-sender-assets")
+def castSenderConfig = rootProject.ext.pengTv.apps.castSender
+def embeddedDebugSenderAssetsDir = file("$buildDir/generated/embedded-sender-assets/debug")
+def embeddedReleaseSenderAssetsDir = file("$buildDir/generated/embedded-sender-assets/release")
+
+def signingProperties = new Properties()
+def signingPropertiesFile = rootProject.file("keystore.properties")
+if (signingPropertiesFile.isFile()) {
+    signingPropertiesFile.withInputStream { signingProperties.load(it) }
+}
+def hasReleaseSigning = ["storeFile", "storePassword", "keyAlias", "keyPassword"]
+        .every { signingProperties.getProperty(it) }
 
 android {
     namespace "com.peng.cast.receiver"
@@ -17,31 +27,75 @@ android {
         versionName appConfig.versionName
     }
 
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile rootProject.file(signingProperties.getProperty("storeFile"))
+                storePassword signingProperties.getProperty("storePassword")
+                keyAlias signingProperties.getProperty("keyAlias")
+                keyPassword signingProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
     sourceSets {
-        main {
-            assets.srcDir embeddedSenderAssetsDir
+        debug {
+            assets.srcDir embeddedDebugSenderAssetsDir
+        }
+        release {
+            assets.srcDir embeddedReleaseSenderAssetsDir
         }
     }
 }
 
-tasks.register("copyEmbeddedSenderApk", Copy) {
+tasks.register("copyEmbeddedDebugSenderApk", Copy) {
     dependsOn(":cast-sender:assembleDebug")
-    from(project(":cast-sender").file("build/outputs/apk/debug/cast-sender-debug.apk"))
-    into(embeddedSenderAssetsDir)
+    from(project(":cast-sender").file("build/outputs/apk/debug/PENG-Cast-Sender-v${castSenderConfig.versionName}-debug.apk"))
+    into(embeddedDebugSenderAssetsDir)
     rename { "peng-cast-sender.apk" }
 }
 
-tasks.named("preBuild").configure {
-    dependsOn(tasks.named("copyEmbeddedSenderApk"))
+tasks.register("copyEmbeddedReleaseSenderApk", Copy) {
+    dependsOn(":cast-sender:assembleRelease")
+    from(project(":cast-sender").file("build/outputs/apk/release/PENG-Cast-Sender-v${castSenderConfig.versionName}-release.apk"))
+    into(embeddedReleaseSenderAssetsDir)
+    rename { "peng-cast-sender.apk" }
+}
+
+tasks.configureEach { task ->
+    if (!task.name.startsWith("copyEmbedded") && task.name.contains("Debug")) {
+        task.dependsOn(tasks.named("copyEmbeddedDebugSenderApk"))
+    }
+    if (!task.name.startsWith("copyEmbedded") && task.name.contains("Release")) {
+        task.dependsOn(tasks.named("copyEmbeddedReleaseSenderApk"))
+    }
 }
 
 dependencies {
     implementation project(":cast-protocol")
     implementation "androidx.core:core:1.9.0"
     implementation "com.google.zxing:core:3.5.1"
+}
+
+def appVersionName = android.defaultConfig.versionName
+
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        variant.outputs.forEach { output ->
+            output.outputFileName.set("PENG-Cast-Receiver-v${appVersionName}-${variant.name}.apk")
+        }
+    }
 }
