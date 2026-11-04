@@ -18,6 +18,17 @@
 PENG影视的两个 APK 使用相同包名，同一设备只能安装其中一个。旧的
 `PENG-Movie-API19-arm64-release.apk` 不作为推荐发布产物。
 
+## Release 产物体积
+
+v0.1.0 的全部 Release 资产均小于 25 MiB：
+
+- `PENG-Launcher-v0.1.0-release.apk`：0.92 MiB（968,771 bytes）
+- `PENG-Live-v0.1.0-release.apk`：2.86 MiB（3,001,345 bytes）
+- `PENG-Movie-API19-armeabi-v7a-release.apk`：21.78 MiB（22,838,280 bytes）
+- `PENG-Movie-arm64-release.apk`：23.19 MiB（24,318,687 bytes）
+- `PENG-Cast-Sender-v0.1.20-release.apk`：0.98 MiB（1,028,449 bytes）
+- `PENG-Cast-Receiver-v0.1.29-release.apk`：2.15 MiB（2,252,255 bytes）
+
 ## Release 校验值
 
 | APK | SHA-256 |
