@@ -1,6 +1,7 @@
 package com.peng.video;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.graphics.Color;
@@ -51,6 +52,7 @@ public final class VideoMainActivity extends Activity {
     private TextView status;
     private View firstChannel;
     private View sourceSettings;
+    private View playbackSettings;
     private List<Channel> allChannels = Collections.emptyList();
     private GuideResult channelGuide;
     private int currentPage;
@@ -104,9 +106,17 @@ public final class VideoMainActivity extends Activity {
 
         LinearLayout header = new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        TextView title = text("PENG电视", 30, Color.WHITE);
+        TextView title = text("PENG直播", 30, Color.WHITE);
         header.addView(title, new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f));
+        playbackSettings = action("播放设置");
+        playbackSettings.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                showPlaybackSettings();
+            }
+        });
+        header.addView(playbackSettings, new LinearLayout.LayoutParams(dp(120), dp(52)));
         sourceSettings = action("源设置");
         sourceSettings.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -144,6 +154,21 @@ public final class VideoMainActivity extends Activity {
         root.addView(channelScroll, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1.0f));
         setContentView(root);
+    }
+
+    private void showPlaybackSettings() {
+        String[] qualities = {"流畅优先（480P）", "均衡（720P）", "高清（1080P）"};
+        int selectedQuality = VideoPreferences.playbackQuality(this);
+        new AlertDialog.Builder(this)
+                .setTitle("播放质量")
+                .setMessage("流畅优先会降低带宽和解码压力；设置将在下次播放时生效。")
+                .setSingleChoiceItems(qualities, selectedQuality, (dialog, which) -> {
+                    VideoPreferences.savePlaybackQuality(this, which);
+                    Toast.makeText(this, "已选择" + qualities[which] + "，下次播放时生效",
+                            Toast.LENGTH_SHORT).show();
+                    dialog.dismiss();
+                })
+                .show();
     }
 
     private void reloadChannels(final boolean autoPlayLastChannel) {

@@ -3,6 +3,8 @@ package com.peng.video;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.util.Base64;
+import java.nio.charset.StandardCharsets;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -19,6 +21,13 @@ final class VideoPreferences {
     private static final String LAST_CHANNEL_URL = "last_channel_url";
     private static final String DEFAULT_LINE_PREFIX = "default_line_";
     private static final String HIDDEN_CHANNELS = "hidden_channels";
+    private static final String PLAYBACK_QUALITY = "playback_quality";
+    private static final String LINE_FAILURE_PREFIX = "line_failure_";
+    private static final String LINE_READY_COUNT_PREFIX = "line_ready_count_";
+    private static final String LINE_STARTUP_TOTAL_PREFIX = "line_startup_total_";
+    static final int QUALITY_SMOOTH = 0;
+    static final int QUALITY_BALANCED = 1;
+    static final int QUALITY_HIGH = 2;
 
     private VideoPreferences() {
     }
@@ -150,6 +159,42 @@ final class VideoPreferences {
         preferences(context).edit().putString(DEFAULT_LINE_PREFIX + channelName, url).apply();
     }
 
+    static int playbackQuality(Context context) {
+        return preferences(context).getInt(PLAYBACK_QUALITY, QUALITY_SMOOTH);
+    }
+
+    static void savePlaybackQuality(Context context, int quality) {
+        preferences(context).edit().putInt(PLAYBACK_QUALITY, quality).apply();
+    }
+
+    static void recordLineReady(Context context, String url, long startupMillis) {
+        String key = lineKey(url);
+        SharedPreferences preferences = preferences(context);
+        long count = preferences.getLong(LINE_READY_COUNT_PREFIX + key, 0);
+        long total = preferences.getLong(LINE_STARTUP_TOTAL_PREFIX + key, 0);
+        preferences.edit()
+                .putLong(LINE_READY_COUNT_PREFIX + key, count + 1)
+                .putLong(LINE_STARTUP_TOTAL_PREFIX + key, total + Math.max(0, startupMillis))
+                .apply();
+    }
+
+    static void recordLineFailure(Context context, String url) {
+        String key = lineKey(url);
+        SharedPreferences preferences = preferences(context);
+        long failures = preferences.getLong(LINE_FAILURE_PREFIX + key, 0);
+        preferences.edit().putLong(LINE_FAILURE_PREFIX + key, Math.min(failures + 1, 100)).apply();
+    }
+
+    static long lineHealthScore(Context context, String url) {
+        String key = lineKey(url);
+        SharedPreferences preferences = preferences(context);
+        long failures = preferences.getLong(LINE_FAILURE_PREFIX + key, 0);
+        long readyCount = preferences.getLong(LINE_READY_COUNT_PREFIX + key, 0);
+        long startupTotal = preferences.getLong(LINE_STARTUP_TOTAL_PREFIX + key, 0);
+        long averageStartup = readyCount == 0 ? 15_000 : startupTotal / readyCount;
+        return failures * 60_000 + averageStartup;
+    }
+
     static void hideChannel(Context context, String channelName) {
         Set<String> hidden = new HashSet<>(hiddenChannels(context));
         hidden.add(channelName);
@@ -176,5 +221,10 @@ final class VideoPreferences {
         Uri uri = Uri.parse(value);
         return ("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme()))
                 && uri.getHost() != null;
+    }
+
+    private static String lineKey(String url) {
+        return Base64.encodeToString(url.getBytes(StandardCharsets.UTF_8),
+                Base64.NO_WRAP | Base64.NO_PADDING | Base64.URL_SAFE);
     }
 }

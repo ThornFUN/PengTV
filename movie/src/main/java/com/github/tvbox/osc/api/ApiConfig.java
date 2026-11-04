@@ -8,8 +8,10 @@ import android.util.Base64;
 
 import com.github.catvod.crawler.JarLoader;
 import com.github.catvod.crawler.JsLoader;
+import com.github.catvod.crawler.MockSpider;
 import com.github.catvod.crawler.pyLoader;
 import com.github.catvod.crawler.Spider;
+import com.github.catvod.crawler.SpiderNull;
 import com.github.catvod.crawler.python.IPyLoader;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.base.App;
@@ -32,6 +34,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.lzy.okgo.OkGo;
 import com.lzy.okgo.callback.AbsCallback;
 import com.lzy.okgo.model.Response;
@@ -47,6 +50,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -56,6 +60,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.github.tvbox.osc.util.LOG;
+import com.google.gson.stream.JsonReader;
 /**
  * @author pj567
  * @date :2020/12/18
@@ -346,7 +351,9 @@ public class ApiConfig {
     private static  String jarCache ="true";
     private void parseJson(String apiUrl, String jsonStr) {
 //        pyLoader.setConfig(jsonStr);
-        JsonObject infoJson = new Gson().fromJson(jsonStr, JsonObject.class);
+        JsonReader jsonReader = new JsonReader(new StringReader(jsonStr));
+        jsonReader.setLenient(true);
+        JsonObject infoJson = JsonParser.parseReader(jsonReader).getAsJsonObject();
         jarCache = DefaultConfig.safeJsonString(infoJson, "jarCache", "true");
         // spider
         spider = DefaultConfig.safeJsonString(infoJson, "spider", "");
@@ -738,7 +745,16 @@ public class ApiConfig {
     }
 
     public Spider getCSP(SourceBean sourceBean) {
-        if (sourceBean.getApi().endsWith(".js") || sourceBean.getApi().contains(".js?")){
+        if ("csp_PengMock".equals(sourceBean.getApi())) {
+            MockSpider spider = new MockSpider();
+            try {
+                spider.init(App.getInstance(), sourceBean.getExt());
+                return spider;
+            } catch (Exception e) {
+                LOG.e("Failed to initialize PENG mock Spider: " + e.getMessage());
+                return new SpiderNull();
+            }
+        } else if (sourceBean.getApi().endsWith(".js") || sourceBean.getApi().contains(".js?")){
             return jsLoader.getSpider(sourceBean.getKey(), sourceBean.getApi(), sourceBean.getExt(), sourceBean.getJar());
         }else if (sourceBean.getApi().contains(".py")) {
             return pyLoader.getSpider(sourceBean.getKey(), sourceBean.getApi(), sourceBean.getExt());

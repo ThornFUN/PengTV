@@ -11,6 +11,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -30,6 +31,7 @@ import com.google.android.exoplayer2.source.BehindLiveWindowException;
 import com.google.android.exoplayer2.ui.PlayerView;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -39,6 +41,7 @@ public final class PlayerActivity extends Activity {
     private static final String TAG = "PENG_VIDEO";
     private static final int DRAWER_COLUMN_COUNT = 3;
     private static final int DRAWER_CHANNELS_PER_PAGE = 30;
+    private static final int BUFFER_TIMEOUT_MS = 12_000;
     public static final String EXTRA_NAME = "name";
     public static final String EXTRA_URL = "url";
     public static final String EXTRA_INDEX = "index";
@@ -46,6 +49,7 @@ public final class PlayerActivity extends Activity {
     private final Handler overlayHandler = new Handler(Looper.getMainLooper());
     private final Handler channelInputHandler = new Handler(Looper.getMainLooper());
     private final Handler retryHandler = new Handler(Looper.getMainLooper());
+    private final Handler bufferTimeoutHandler = new Handler(Looper.getMainLooper());
     private final Runnable hideOverlay = new Runnable() {
         @Override
         public void run() {
@@ -73,10 +77,24 @@ public final class PlayerActivity extends Activity {
             prepareCurrentChannel();
         }
     };
+    private final Runnable handleBufferTimeout = new Runnable() {
+        @Override
+        public void run() {
+            if (player != null && player.getPlaybackState() == Player.STATE_BUFFERING) {
+                if (linePreviewing) {
+                    updateLineControl("该线路缓冲过慢，可继续左右切换");
+                    return;
+                }
+                recoverPlayback("网络缓冲超时，正在切换线路...");
+            }
+        }
+    };
     private String currentUrl;
     private int retryCount;
     private List<String> currentUrls = Collections.emptyList();
     private int currentUrlIndex;
+    private long playbackStartedAtMillis;
+    private boolean currentAttemptReachedReady;
     private TextView lineControl;
     private LinearLayout channelDrawer;
     private LinearLayout drawerCategories;
@@ -152,18 +170,24 @@ public final class PlayerActivity extends Activity {
         buildChannelDrawer(root);
         setContentView(root);
 
-        player = new ExoPlayer.Builder(this).build();
+        player = LivePlaybackFactory.create(this);
         playerView.setPlayer(player);
         player.addListener(new Player.Listener() {
             @Override
             public void onPlaybackStateChanged(int playbackState) {
                 if (playbackState == Player.STATE_READY) {
                     retryCount = 0;
+                    bufferTimeoutHandler.removeCallbacks(handleBufferTimeout);
+                    recordCurrentLineReady();
                     loadingOverlay.setVisibility(View.GONE);
                     if (linePreviewing) {
                         updateLineControl("预览正常，按确认设为默认");
                     }
                     Log.i(TAG, "Playback ready: " + currentUrl);
+                } else if (playbackState == Player.STATE_BUFFERING) {
+                    scheduleBufferTimeout();
+                } else {
+                    bufferTimeoutHandler.removeCallbacks(handleBufferTimeout);
                 }
             }
 
@@ -174,21 +198,8 @@ public final class PlayerActivity extends Activity {
                     updateLineControl("该线路无法播放，可继续左右切换");
                     return;
                 }
-                if (retryCount < 3) {
-                    retryCount++;
-                    loadingOverlay.setText("播放中断，正在重试（" + retryCount + "/3）...");
-                    loadingOverlay.setVisibility(View.VISIBLE);
-                    retryHandler.removeCallbacks(retryPlayback);
-                    retryHandler.postDelayed(retryPlayback,
-                            error.getCause() instanceof BehindLiveWindowException ? 0 : 2000);
-                    return;
-                }
-                if (playFallbackUrl()) {
-                    return;
-                }
-                loadingOverlay.setText("播放失败，请切换频道或稍后重试");
-                loadingOverlay.setVisibility(View.VISIBLE);
-                Toast.makeText(PlayerActivity.this, "播放失败，请切换频道或稍后重试", Toast.LENGTH_SHORT).show();
+                recoverPlayback(error.getCause() instanceof BehindLiveWindowException
+                        ? "直播窗口已过期，正在恢复..." : "播放中断，正在切换线路...");
             }
         });
         playChannel(getIntent().getIntExtra(EXTRA_INDEX, 0));
@@ -260,7 +271,7 @@ public final class PlayerActivity extends Activity {
             return;
         }
         lastBackPressedAt = now;
-        Toast.makeText(this, "再按一次返回退出 PENG电视", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "再按一次返回退出 PENG直播", Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -268,6 +279,7 @@ public final class PlayerActivity extends Activity {
         overlayHandler.removeCallbacks(hideOverlay);
         channelInputHandler.removeCallbacks(submitChannelInput);
         retryHandler.removeCallbacks(retryPlayback);
+        bufferTimeoutHandler.removeCallbacks(handleBufferTimeout);
         if (player != null) {
             player.pause();
         }
@@ -284,6 +296,10 @@ public final class PlayerActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        overlayHandler.removeCallbacks(hideOverlay);
+        channelInputHandler.removeCallbacks(submitChannelInput);
+        retryHandler.removeCallbacks(retryPlayback);
+        bufferTimeoutHandler.removeCallbacks(handleBufferTimeout);
         if (player != null) {
             player.release();
         }
@@ -301,6 +317,7 @@ public final class PlayerActivity extends Activity {
         channelInput.setLength(0);
         channelInputHandler.removeCallbacks(submitChannelInput);
         retryHandler.removeCallbacks(retryPlayback);
+        bufferTimeoutHandler.removeCallbacks(handleBufferTimeout);
         retryCount = 0;
         linePreviewing = false;
         lineControl.setVisibility(View.GONE);
@@ -308,7 +325,7 @@ public final class PlayerActivity extends Activity {
         currentUrls = channel == null ? Collections.singletonList(url) : preferredUrls(channel);
         currentUrlIndex = 0;
         currentUrl = currentUrls.get(currentUrlIndex);
-        title.setText(name == null ? "PENG电视" : name);
+        title.setText(name == null ? "PENG直播" : name);
         channelNumber.setText(String.format(Locale.US, "%03d", currentIndex + 1));
         showChannelOverlay();
         VideoPreferences.saveLastChannelUrl(this, url);
@@ -320,6 +337,18 @@ public final class PlayerActivity extends Activity {
         String preferredUrl = VideoPreferences.defaultLineUrl(this, channel.name);
         if (urls.remove(preferredUrl)) {
             urls.add(0, preferredUrl);
+        }
+        int sortStartIndex = preferredUrl.equals(urls.isEmpty() ? "" : urls.get(0)) ? 1 : 0;
+        List<String> fallbackUrls = new ArrayList<>(urls.subList(sortStartIndex, urls.size()));
+        Collections.sort(fallbackUrls, new Comparator<String>() {
+            @Override
+            public int compare(String first, String second) {
+                return Long.compare(VideoPreferences.lineHealthScore(PlayerActivity.this, first),
+                        VideoPreferences.lineHealthScore(PlayerActivity.this, second));
+            }
+        });
+        for (int index = 0; index < fallbackUrls.size(); index++) {
+            urls.set(sortStartIndex + index, fallbackUrls.get(index));
         }
         return urls;
     }
@@ -341,11 +370,46 @@ public final class PlayerActivity extends Activity {
         if (!VideoPreferences.isHttpUrl(currentUrl)) {
             return;
         }
+        currentAttemptReachedReady = false;
+        playbackStartedAtMillis = SystemClock.elapsedRealtime();
         loadingOverlay.setText("正在加载...");
         loadingOverlay.setVisibility(View.VISIBLE);
         player.setMediaItem(MediaItem.fromUri(Uri.parse(currentUrl)));
         player.prepare();
         player.play();
+    }
+
+    private void scheduleBufferTimeout() {
+        bufferTimeoutHandler.removeCallbacks(handleBufferTimeout);
+        bufferTimeoutHandler.postDelayed(handleBufferTimeout, BUFFER_TIMEOUT_MS);
+    }
+
+    private void recordCurrentLineReady() {
+        if (currentAttemptReachedReady) {
+            return;
+        }
+        currentAttemptReachedReady = true;
+        VideoPreferences.recordLineReady(this, currentUrl,
+                SystemClock.elapsedRealtime() - playbackStartedAtMillis);
+    }
+
+    private void recoverPlayback(String message) {
+        bufferTimeoutHandler.removeCallbacks(handleBufferTimeout);
+        VideoPreferences.recordLineFailure(this, currentUrl);
+        if (playFallbackUrl()) {
+            return;
+        }
+        if (retryCount == 0) {
+            retryCount++;
+            loadingOverlay.setText(message);
+            loadingOverlay.setVisibility(View.VISIBLE);
+            retryHandler.removeCallbacks(retryPlayback);
+            retryHandler.postDelayed(retryPlayback, 1_000);
+            return;
+        }
+        loadingOverlay.setText("播放失败，请切换频道或稍后重试");
+        loadingOverlay.setVisibility(View.VISIBLE);
+        Toast.makeText(this, "播放失败，请切换频道或稍后重试", Toast.LENGTH_SHORT).show();
     }
 
     private void buildChannelDrawer(FrameLayout root) {

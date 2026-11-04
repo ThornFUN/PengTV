@@ -1,13 +1,13 @@
 # PENG Android TV 套件
 
-本工程包含三个可独立安装的应用：PENG 桌面、PENG TV 与 PENG影视。已构建的 release APK 会集中复制到工程根目录的 [`outputs/`](outputs/)。
+本工程包含三个可独立安装的应用：PENG 桌面、PENG直播 与 PENG影视。已构建的 release APK 会集中复制到工程根目录的 [`outputs/`](outputs/)。
 
 ## 已构建 APK
 
 | 应用 | APK | 兼容范围 | 签名 | SHA-256 |
 |---|---|---|---|---|
 | PENG 桌面 | `outputs/PENG-Launcher-v0.1.0-release.apk` | Android 4.0 / API 14 及以上；不含 native 库，支持设备自身 ABI | 已使用本地 release 签名 | `6a7f45576b2e8f6123879f9b2ec29750f1c4ac9a3d956f6f59a46a660d644d0f` |
-| PENG TV | `outputs/PENG-TV-v0.1.0-release.apk` | Android 4.4 / API 19 及以上；不含 native 库，支持设备自身 ABI | 已使用本地 release 签名 | `f4fd2b8881020852621d1f55e395fe406738b7593a3f81181955d9a5114b070a` |
+| PENG直播 | `outputs/PENG-Live-v0.1.0-release.apk` | Android 4.4 / API 19 及以上；不含 native 库，支持设备自身 ABI | 新版本需重新构建 | — |
 
 ## 应用概览
 
@@ -46,7 +46,7 @@ PENG 桌面是一个面向 Android TV、电视盒子和大屏设备的轻量级�
 ## 快速开始
 
 ```bash
-git clone https://gitee.com/ThornFUN/peng-launcher.git
+git clone https://github.com/ThornFUN/PengTV.git
 cd peng-launcher
 ./gradlew assembleDebug
 ```
@@ -81,7 +81,7 @@ adb install -r launcher/build/outputs/apk/debug/launcher-debug.apk
 
 首次使用时，在系统设置中将 **PENG 桌面** 设为默认桌面应用，或从应用列表直接启动。
 
-## PENG TV
+## PENG直播
 
 `live-show/` 是与 PENG 桌面同仓库、但可独立安装的 IPTV 应用，包名为
 `com.peng.live.show`。它不声明 HOME，不会改变默认桌面。
@@ -91,10 +91,11 @@ adb install -r launcher/build/outputs/apk/debug/launcher-debug.apk
 - 可在电视端填写地址，或在“手机导入”页使用同一局域网手机访问电视
   `8081` 端口填写地址；该服务只在导入页面可见时运行。
 - 采用兼容 Android 4.4 的 ExoPlayer HLS 播放器，适合设备自身支持的 HTTP/HLS 流。
+- 默认采用稳定优先的 20 至 30 秒缓冲策略，可选流畅（480P）、均衡（720P）和高清（1080P）三档；线路缓冲超时或播放失败时优先切换备用线路，并记录线路启动速度和失败次数以优化后续排序。
 - 频道按三位编号显示；应用启动时自动恢复上次选择的频道，播放页可按上、下键切换上一或下一频道，也可用数字键输入编号后按确认跳转。
-- 播放页按菜单键打开频道列表，频道列表按返回键回到播放页；播放页连续按两次返回键退出 PENG TV。
+- 播放页按菜单键打开频道列表，频道列表按返回键回到播放页；播放页连续按两次返回键退出 PENG直播。
 
-单独构建 PENG TV：
+单独构建 PENG直播：
 
 ```bash
 ./gradlew :live-show:assembleRelease
@@ -103,12 +104,12 @@ adb install -r launcher/build/outputs/apk/debug/launcher-debug.apk
 签名后的 APK 输出到：
 
 ```text
-live-show/build/outputs/apk/release/PENG-TV-v<version>-release.apk
+live-show/build/outputs/apk/release/PENG-Live-v<version>-release.apk
 ```
 
 ## PENG影视
 
-`movie/` 是收编到 PengTV 根工程的 TVBox 影视客户端，包名为
+`movie/` 是收编到 PengLive 根工程的 TVBox 影视客户端，包名为
 `com.peng.movie`。它依赖 `movie/quickjs/`，Python 风味额外依赖
 `movie/pyramid/`；默认的 Java 风味兼容 Android 4.4 / API 19。
 
@@ -194,7 +195,7 @@ launcher/
 live-show/
   src/main/
     java/com/peng/video/       # IPTV 播放、源配置和手机导入服务
-    res/                       # PENG TV 主题和 TV Banner
+    res/                       # PENG直播主题和 TV Banner
 movie/
   src/main/                    # PENG影视应用源码与资源
   quickjs/                     # JavaScript 引擎库
