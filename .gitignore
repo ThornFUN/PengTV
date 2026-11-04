@@ -2,6 +2,7 @@
 build/
 app/build/
 app/release/
+outputs/
 local.properties
 *.iml
 .idea/
